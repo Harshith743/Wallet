@@ -6,8 +6,6 @@ plugins {
     id("dagger.hilt.android.plugin")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
     id("io.gitlab.arturbosch.detekt")
 }
 
@@ -16,7 +14,7 @@ android {
     compileSdk = libs.versions.compile.sdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.ivy.wallet"
+        applicationId = "com.wallet"
         minSdk = libs.versions.min.sdk.get().toInt()
         targetSdk = libs.versions.compile.sdk.get().toInt()
         versionName = libs.versions.version.name.get()
@@ -57,7 +55,7 @@ android {
 
             signingConfig = signingConfigs.getByName("release")
 
-            resValue("string", "app_name", "Ivy Wallet")
+            resValue("string", "app_name", "Wallet")
         }
 
         debug {
@@ -70,7 +68,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
 
             applicationIdSuffix = ".debug"
-            resValue("string", "app_name", "Ivy Wallet Debug")
+            resValue("string", "app_name", "Wallet Debug")
         }
 
         create("demo") {
@@ -89,7 +87,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
 
             applicationIdSuffix = ".debug"
-            resValue("string", "app_name", "Ivy Wallet")
+            resValue("string", "app_name", "Wallet")
         }
     }
 
@@ -138,14 +136,11 @@ dependencies {
     implementation(projects.feature.onboarding)
     implementation(projects.feature.piechart)
     implementation(projects.feature.plannedPayments)
-    implementation(projects.feature.poll.impl)
-    implementation(projects.feature.poll.public)
     implementation(projects.feature.releases)
     implementation(projects.feature.reports)
     implementation(projects.feature.search)
     implementation(projects.feature.settings)
     implementation(projects.feature.transactions)
-    implementation(projects.feature.poll.impl)
     implementation(projects.shared.base)
     implementation(projects.shared.data.core)
     implementation(projects.shared.domain)
@@ -163,7 +158,6 @@ dependencies {
     implementation(libs.bundles.compose)
     implementation(libs.bundles.activity)
     implementation(libs.bundles.google)
-    implementation(libs.bundles.firebase)
     implementation(libs.datastore)
     implementation(libs.androidx.security)
     implementation(libs.androidx.biometrics)

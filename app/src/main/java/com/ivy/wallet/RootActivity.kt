@@ -43,7 +43,6 @@ import com.ivy.legacy.Constants
 import com.ivy.legacy.IvyWalletCtx
 import com.ivy.legacy.appDesign
 import com.ivy.legacy.utils.activityForResultLauncher
-import com.ivy.legacy.utils.sendToCrashlytics
 import com.ivy.legacy.utils.simpleActivityForResultLauncher
 import com.ivy.navigation.Navigation
 import com.ivy.navigation.NavigationRoot
@@ -366,7 +365,6 @@ class RootActivity : AppCompatActivity(), RootScreen {
             startActivity(browserIntent)
         } catch (e: Exception) {
             e.printStackTrace()
-            e.sendToCrashlytics("Cannot open URL in browser, intent not supported.")
             Toast.makeText(
                 this,
                 "No browser app found. Visit manually: $url",
