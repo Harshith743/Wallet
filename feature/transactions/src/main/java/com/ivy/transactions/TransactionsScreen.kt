@@ -66,6 +66,7 @@ import com.ivy.legacy.utils.setStatusBarDarkTextCompat
 import com.ivy.navigation.EditTransactionScreen
 import com.ivy.navigation.IvyPreview
 import com.ivy.navigation.PieChartStatisticScreen
+import com.ivy.navigation.EditCreditCardScreen
 import com.ivy.navigation.TransactionsScreen
 import com.ivy.navigation.navigation
 import com.ivy.navigation.screenScopedViewModel
@@ -126,6 +127,7 @@ fun BoxWithConstraintsScope.TransactionsScreen(screen: TransactionsScreen) {
         accounts = uiState.accounts,
 
         account = uiState.account,
+        isCreditCard = uiState.isCreditCard,
         category = uiState.category,
 
         balance = uiState.balance,
@@ -243,6 +245,7 @@ private fun BoxWithConstraintsScope.UI(
     deleteModal1Visible: Boolean,
     onDeleteModal1Visible: (Boolean) -> Unit,
 
+    isCreditCard: Boolean = false,
     initWithTransactions: Boolean = false,
     treatTransfersAsIncomeExpense: Boolean = false,
     upcomingExpanded: Boolean = true,
@@ -263,6 +266,7 @@ private fun BoxWithConstraintsScope.UI(
     onChoosePeriodModal: (ChoosePeriodModalData?) -> Unit,
 ) {
     val ivyContext = ivyWalletCtx()
+    val nav = navigation()
     val itemColor = (account?.color ?: category?.color?.value)?.toComposeColor() ?: Gray
 
     var categoryModalData: CategoryModalData? by remember { mutableStateOf(null) }
@@ -324,6 +328,11 @@ private fun BoxWithConstraintsScope.UI(
                     },
                     onEdit = {
                         when {
+                            // A credit card's account is edited from the card screen only
+                            account != null && isCreditCard -> {
+                                nav.navigateTo(EditCreditCardScreen(cardId = account.id))
+                            }
+
                             account != null -> {
                                 accountModalData = AccountModalData(
                                     account = account,
@@ -344,6 +353,10 @@ private fun BoxWithConstraintsScope.UI(
 
                     onBalanceClick = {
                         when {
+                            account != null && isCreditCard -> {
+                                nav.navigateTo(EditCreditCardScreen(cardId = account.id))
+                            }
+
                             account != null -> {
                                 accountModalData = AccountModalData(
                                     account = account,
@@ -362,13 +375,17 @@ private fun BoxWithConstraintsScope.UI(
                         )
                     },
                     showAccountModal = {
-                        accountModalData = AccountModalData(
-                            account = account,
-                            baseCurrency = currency,
-                            balance = balance,
-                            adjustBalanceMode = false,
-                            autoFocusKeyboard = false
-                        )
+                        if (isCreditCard && account != null) {
+                            nav.navigateTo(EditCreditCardScreen(cardId = account.id))
+                        } else {
+                            accountModalData = AccountModalData(
+                                account = account,
+                                baseCurrency = currency,
+                                balance = balance,
+                                adjustBalanceMode = false,
+                                autoFocusKeyboard = false
+                            )
+                        }
                     }
                 )
             }

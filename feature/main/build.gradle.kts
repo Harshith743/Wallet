@@ -8,6 +8,7 @@ android {
 
 dependencies {
     implementation(projects.feature.accounts)
+    implementation(projects.feature.creditCards)
     implementation(projects.feature.home)
     implementation(projects.shared.base)
     implementation(projects.shared.data.core)

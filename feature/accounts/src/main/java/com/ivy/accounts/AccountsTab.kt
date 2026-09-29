@@ -1,5 +1,6 @@
 package com.ivy.accounts
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,12 +26,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivy.base.legacy.Theme
+import com.ivy.creditcards.CreditCardsContent
+import com.ivy.creditcards.CreditCardsNavigation
+import com.ivy.creditcards.CreditCardsOverlays
+import com.ivy.creditcards.CreditCardsUiEvent
+import com.ivy.creditcards.CreditCardsUiState
+import com.ivy.creditcards.CreditCardsViewModel
+import com.ivy.creditcards.preview.CreditCardsPreviewData
+import com.ivy.creditcards.session.AccountsSegment
 import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.primitive.AssetCode
@@ -39,12 +49,16 @@ import com.ivy.data.model.primitive.IconAsset
 import com.ivy.data.model.primitive.NotBlankTrimmedString
 import com.ivy.design.l0_system.UI
 import com.ivy.design.l0_system.style
+import com.ivy.design.utils.thenIf
 import com.ivy.legacy.IvyWalletPreview
 import com.ivy.legacy.data.model.AccountData
 import com.ivy.legacy.utils.clickableNoIndication
 import com.ivy.legacy.utils.horizontalSwipeListener
 import com.ivy.legacy.utils.rememberInteractionSource
 import com.ivy.legacy.utils.rememberSwipeListenerState
+import com.ivy.navigation.CreditCardDetailsScreen
+import com.ivy.navigation.EditCreditCardScreen
+import com.ivy.navigation.SettingsScreen
 import com.ivy.navigation.TransactionsScreen
 import com.ivy.navigation.navigation
 import com.ivy.navigation.screenScopedViewModel
@@ -55,7 +69,6 @@ import com.ivy.wallet.ui.theme.GreenLight
 import com.ivy.wallet.ui.theme.components.BalanceRow
 import com.ivy.wallet.ui.theme.components.BalanceRowMini
 import com.ivy.wallet.ui.theme.components.ItemIconSDefaultIcon
-import com.ivy.wallet.ui.theme.components.ReorderButton
 import com.ivy.wallet.ui.theme.components.ReorderModalSingleType
 import com.ivy.wallet.ui.theme.dynamicContrast
 import com.ivy.wallet.ui.theme.findContrastTextColor
@@ -66,96 +79,87 @@ import java.util.UUID
 @Composable
 fun BoxWithConstraintsScope.AccountsTab() {
     val viewModel: AccountsViewModel = screenScopedViewModel()
+    val creditCardsViewModel: CreditCardsViewModel = screenScopedViewModel()
     val uiState = viewModel.uiState()
+    val creditCardsState = creditCardsViewModel.uiState()
 
     UI(
         state = uiState,
-        onEvent = viewModel::onEvent
+        creditCardsState = creditCardsState,
+        onEvent = viewModel::onEvent,
+        onCreditCardsEvent = creditCardsViewModel::onEvent,
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BoxWithConstraintsScope.UI(
     state: AccountsState,
-    onEvent: (AccountsEvent) -> Unit = {}
+    creditCardsState: CreditCardsUiState,
+    onEvent: (AccountsEvent) -> Unit = {},
+    onCreditCardsEvent: (CreditCardsUiEvent) -> Unit = {},
 ) {
     val nav = navigation()
     val ivyContext = com.ivy.legacy.ivyWalletCtx()
+    val segment = state.segment
     var listState = rememberLazyListState()
     if (!state.accountsData.isEmpty()) {
         listState = rememberScrollPositionListState(
-            key = "accounts_lazy_column",
+            key = "accounts_lazy_column_${segment.name}",
             initialFirstVisibleItemIndex = ivyContext.accountsListState?.firstVisibleItemIndex ?: 0,
             initialFirstVisibleItemScrollOffset = ivyContext.accountsListState?.firstVisibleItemScrollOffset
                 ?: 0
         )
     }
+    val swipeListenerState = rememberSwipeListenerState()
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .horizontalSwipeListener(
-                sensitivity = 200,
-                state = rememberSwipeListenerState(),
-                onSwipeLeft = {
-                    ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
-                },
-                onSwipeRight = {
-                    ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
-                }
-            ),
+            // Only the Accounts segment swipes to Home; cards keep their own gestures
+            .thenIf(segment == AccountsSegment.ACCOUNTS) {
+                horizontalSwipeListener(
+                    sensitivity = 200,
+                    state = swipeListenerState,
+                    onSwipeLeft = {
+                        ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
+                    },
+                    onSwipeRight = {
+                        ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
+                    }
+                )
+            },
         state = listState
     ) {
-        item {
-            Spacer(Modifier.height(32.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Spacer(Modifier.width(24.dp))
-
-                Column {
-                    Text(
-                        text = stringResource(R.string.accounts),
-                        style = UI.typo.b1.style(
-                            color = UI.colors.pureInverse,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    )
-                }
-
-                Spacer(Modifier.weight(1f))
-
-                ReorderButton {
-                    onEvent(
-                        AccountsEvent.OnReorderModalVisible(reorderVisible = true)
-                    )
-                }
-
-                Spacer(Modifier.width(24.dp))
-            }
-            if (!state.hideTotalBalance) {
-                Column {
-                    Spacer(Modifier.height(16.dp))
-                    IncomeExpensesRow(
-                        currency = state.baseCurrency,
-                        incomeLabel = stringResource(id = R.string.total_balance),
-                        income = state.totalBalanceWithoutExcluded.toDoubleOrNull() ?: 0.00,
-                        expensesLabel = stringResource(id = R.string.total_balance_excluded),
-                        expenses = state.totalBalanceWithExcluded.toDoubleOrNull() ?: 0.00
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
-            }
+        stickyHeader {
+            AccountsHeaderToolbar(
+                segment = segment,
+                showReorder = segment == AccountsSegment.ACCOUNTS,
+                onSegmentSelect = { onEvent(AccountsEvent.OnSegmentSelected(it)) },
+                onReorderClick = { onEvent(AccountsEvent.OnReorderModalVisible(reorderVisible = true)) },
+                onSettingsClick = { nav.navigateTo(SettingsScreen) },
+            )
         }
-        items(state.accountsData) {
-            Spacer(Modifier.height(16.dp))
-            AccountCard(
-                baseCurrency = state.baseCurrency,
-                accountData = it,
-                compactModeEnabled = state.compactAccountsModeEnabled,
-                onBalanceClick = {
+        item {
+            HeaderSummary(state = state, creditCardsState = creditCardsState)
+        }
+        when (segment) {
+            AccountsSegment.ACCOUNTS -> items(state.accountsData) {
+                Spacer(Modifier.height(16.dp))
+                AccountCard(
+                    baseCurrency = state.baseCurrency,
+                    accountData = it,
+                    compactModeEnabled = state.compactAccountsModeEnabled,
+                    onBalanceClick = {
+                        nav.navigateTo(
+                            TransactionsScreen(
+                                accountId = it.account.id.value,
+                                categoryId = null
+                            )
+                        )
+                    }
+                ) {
                     nav.navigateTo(
                         TransactionsScreen(
                             accountId = it.account.id.value,
@@ -163,12 +167,21 @@ private fun BoxWithConstraintsScope.UI(
                         )
                     )
                 }
-            ) {
-                nav.navigateTo(
-                    TransactionsScreen(
-                        accountId = it.account.id.value,
-                        categoryId = null
-                    )
+            }
+
+            AccountsSegment.CREDIT_CARDS -> item {
+                CreditCardsContent(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    state = creditCardsState,
+                    onEvent = onCreditCardsEvent,
+                    navigation = CreditCardsNavigation(
+                        onAddCard = { nav.navigateTo(EditCreditCardScreen(cardId = null)) },
+                        onViewDetails = { nav.navigateTo(CreditCardDetailsScreen(cardId = it.value)) },
+                        onEditCard = { nav.navigateTo(EditCreditCardScreen(cardId = it.value)) },
+                        onRecentSpends = {
+                            nav.navigateTo(TransactionsScreen(accountId = it.value, categoryId = null))
+                        },
+                    ),
                 )
             }
         }
@@ -179,7 +192,7 @@ private fun BoxWithConstraintsScope.UI(
     }
 
     ReorderModalSingleType(
-        visible = state.reorderVisible,
+        visible = state.reorderVisible && segment == AccountsSegment.ACCOUNTS,
         initialItems = state.accountsData,
         dismiss = {
             onEvent(AccountsEvent.OnReorderModalVisible(reorderVisible = false))
@@ -199,6 +212,44 @@ private fun BoxWithConstraintsScope.UI(
                 fontWeight = FontWeight.Bold
             )
         )
+    }
+
+    CreditCardsOverlays(state = creditCardsState, onEvent = onCreditCardsEvent)
+}
+
+@Composable
+private fun HeaderSummary(
+    state: AccountsState,
+    creditCardsState: CreditCardsUiState,
+) {
+    Column {
+        Spacer(Modifier.height(16.dp))
+        when (state.segment) {
+            AccountsSegment.ACCOUNTS -> if (!state.hideTotalBalance) {
+                AccountsHeaderSummary(
+                    caption = stringResource(R.string.total_balance),
+                    currencySymbol = state.currencySymbol,
+                    amountText = state.totalBalanceWithoutExcludedFormatted,
+                    secondaryLine = stringResource(R.string.total_balance_excluded) +
+                        ": ${state.currencySymbol}${state.totalBalanceWithExcludedFormatted}",
+                )
+            }
+
+            AccountsSegment.CREDIT_CARDS -> AccountsHeaderSummary(
+                caption = if (creditCardsState.dueCardsCount > 0) {
+                    pluralStringResource(
+                        R.plurals.statement_due_for_cards,
+                        creditCardsState.dueCardsCount,
+                        creditCardsState.dueCardsCount,
+                    )
+                } else {
+                    stringResource(R.string.no_statement_due)
+                },
+                currencySymbol = state.currencySymbol,
+                amountText = creditCardsState.totalDueText.removePrefix(state.currencySymbol),
+            )
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -379,7 +430,9 @@ private fun PreviewAccountsTabCompactModeDisabled(theme: Theme = Theme.LIGHT) {
             orderNum = 0.0,
         )
         val state = AccountsState(
+            segment = AccountsSegment.ACCOUNTS,
             baseCurrency = "BGN",
+            currencySymbol = "лв",
             accountsData = persistentListOf(
                 AccountData(
                     account = acc1,
@@ -414,11 +467,13 @@ private fun PreviewAccountsTabCompactModeDisabled(theme: Theme = Theme.LIGHT) {
             totalBalanceWithExcludedText = "BGN 25.54",
             totalBalanceWithoutExcluded = "25.54",
             totalBalanceWithoutExcludedText = "BGN 25.54",
+            totalBalanceWithoutExcludedFormatted = "16,270.21",
+            totalBalanceWithExcludedFormatted = "16,270.21",
             reorderVisible = false,
             compactAccountsModeEnabled = false,
             hideTotalBalance = false
         )
-        UI(state = state)
+        UI(state = state, creditCardsState = CreditCardsPreviewData.cardsState(persistentListOf()))
     }
 }
 
@@ -466,7 +521,9 @@ private fun PreviewAccountsTabCompactModeEnabled(theme: Theme = Theme.LIGHT) {
             orderNum = 0.0,
         )
         val state = AccountsState(
+            segment = AccountsSegment.ACCOUNTS,
             baseCurrency = "BGN",
+            currencySymbol = "лв",
             accountsData = persistentListOf(
                 AccountData(
                     account = acc1,
@@ -501,11 +558,13 @@ private fun PreviewAccountsTabCompactModeEnabled(theme: Theme = Theme.LIGHT) {
             totalBalanceWithExcludedText = "BGN 25.54",
             totalBalanceWithoutExcluded = "25.54",
             totalBalanceWithoutExcludedText = "BGN 25.54",
+            totalBalanceWithoutExcludedFormatted = "16,270.21",
+            totalBalanceWithExcludedFormatted = "16,270.21",
             reorderVisible = false,
             compactAccountsModeEnabled = true,
             hideTotalBalance = false
         )
-        UI(state = state)
+        UI(state = state, creditCardsState = CreditCardsPreviewData.cardsState(persistentListOf()))
     }
 }
 
@@ -527,4 +586,42 @@ fun AccountsTabCompactUITest(dark: Boolean) {
         false -> Theme.LIGHT
     }
     PreviewAccountsTabCompactModeEnabled(theme)
+}
+
+@Preview
+@Composable
+private fun PreviewAccountsTabCreditCards(theme: Theme = Theme.LIGHT, empty: Boolean = false) {
+    IvyWalletPreview(theme = theme) {
+        val state = AccountsState(
+            segment = AccountsSegment.CREDIT_CARDS,
+            baseCurrency = "INR",
+            currencySymbol = "₹",
+            accountsData = persistentListOf(),
+            totalBalanceWithExcluded = "0.0",
+            totalBalanceWithExcludedText = "",
+            totalBalanceWithoutExcluded = "0.0",
+            totalBalanceWithoutExcludedText = "",
+            totalBalanceWithoutExcludedFormatted = "0.00",
+            totalBalanceWithExcludedFormatted = "0.00",
+            reorderVisible = false,
+            compactAccountsModeEnabled = false,
+            hideTotalBalance = false
+        )
+        UI(
+            state = state,
+            creditCardsState = CreditCardsPreviewData.cardsState(
+                cards = if (empty) persistentListOf() else CreditCardsPreviewData.cards,
+            ),
+        )
+    }
+}
+
+/** For screen shot testing **/
+@Composable
+fun AccountsTabCreditCardsUITest(dark: Boolean, empty: Boolean = false) {
+    val theme = when (dark) {
+        true -> Theme.DARK
+        false -> Theme.LIGHT
+    }
+    PreviewAccountsTabCreditCards(theme = theme, empty = empty)
 }

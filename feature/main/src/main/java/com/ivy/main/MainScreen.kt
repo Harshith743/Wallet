@@ -13,11 +13,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivy.accounts.AccountsTab
 import com.ivy.base.model.TransactionType
+import com.ivy.creditcards.session.AccountsSegment
 import com.ivy.home.HomeTab
 import com.ivy.legacy.IvyWalletPreview
 import com.ivy.legacy.data.model.MainTab
 import com.ivy.legacy.ivyWalletCtx
 import com.ivy.legacy.utils.onScreenStart
+import com.ivy.navigation.EditCreditCardScreen
 import com.ivy.navigation.EditPlannedScreen
 import com.ivy.navigation.EditTransactionScreen
 import com.ivy.navigation.MainScreen
@@ -42,6 +44,7 @@ fun BoxWithConstraintsScope.MainScreen(screen: MainScreen) {
     UI(
         screen = screen,
         tab = ivyContext.mainTab,
+        accountsSegment = viewModel.accountsSegment,
         baseCurrency = currency,
         selectTab = viewModel::selectTab,
         onCreateAccount = viewModel::createAccount
@@ -54,6 +57,7 @@ fun BoxWithConstraintsScope.MainScreen(screen: MainScreen) {
 private fun BoxWithConstraintsScope.UI(
     screen: MainScreen,
     tab: MainTab,
+    accountsSegment: AccountsSegment,
 
     baseCurrency: String,
 
@@ -106,11 +110,16 @@ private fun BoxWithConstraintsScope.UI(
         },
 
         showAddAccountModal = {
-            accountModalData = AccountModalData(
-                account = null,
-                balance = 0.0,
-                baseCurrency = baseCurrency
-            )
+            if (accountsSegment == AccountsSegment.CREDIT_CARDS) {
+                // The "+" on the cards segment adds a card, not an account
+                nav.navigateTo(EditCreditCardScreen(cardId = null))
+            } else {
+                accountModalData = AccountModalData(
+                    account = null,
+                    balance = 0.0,
+                    baseCurrency = baseCurrency
+                )
+            }
         }
     )
 
@@ -133,6 +142,7 @@ private fun PreviewMainScreen() {
         UI(
             screen = MainScreen,
             tab = MainTab.HOME,
+            accountsSegment = AccountsSegment.ACCOUNTS,
             baseCurrency = "BGN",
             selectTab = {},
             onCreateAccount = { }

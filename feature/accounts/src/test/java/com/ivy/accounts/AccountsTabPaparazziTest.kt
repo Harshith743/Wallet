@@ -25,4 +25,18 @@ class AccountsTabPaparazziTest(
             AccountsTabCompactUITest(theme == PaparazziTheme.Dark)
         }
     }
+
+    @Test
+    fun `snapshot accountTab creditCards composable`() {
+        snapshot(theme) {
+            AccountsTabCreditCardsUITest(theme == PaparazziTheme.Dark)
+        }
+    }
+
+    @Test
+    fun `snapshot accountTab creditCards empty composable`() {
+        snapshot(theme) {
+            AccountsTabCreditCardsUITest(theme == PaparazziTheme.Dark, empty = true)
+        }
+    }
 }

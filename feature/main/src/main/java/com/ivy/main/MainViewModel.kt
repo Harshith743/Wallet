@@ -4,6 +4,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ivy.base.legacy.SharedPrefs
+import com.ivy.creditcards.session.AccountsSegment
+import com.ivy.creditcards.session.AccountsSegmentSession
 import com.ivy.data.repository.CurrencyRepository
 import com.ivy.domain.usecase.exchange.SyncExchangeRatesUseCase
 import com.ivy.frp.test.TestIdlingResource
@@ -27,10 +29,15 @@ class MainViewModel @Inject constructor(
     private val accountCreator: AccountCreator,
     private val sharedPrefs: SharedPrefs,
     private val currencyRepository: CurrencyRepository,
+    private val accountsSegmentSession: AccountsSegmentSession,
 ) : ViewModel() {
 
     private val _currency = MutableLiveData<String>()
     val currency = _currency.asLiveData()
+
+    /** Which segment of the Accounts tab is open (Compose state, read in composition). */
+    val accountsSegment: AccountsSegment
+        get() = accountsSegmentSession.segment
 
     fun start(screen: MainScreen) {
         nav.onBackPressed[screen] = {
