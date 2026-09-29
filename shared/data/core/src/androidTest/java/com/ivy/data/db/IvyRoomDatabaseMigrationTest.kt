@@ -9,6 +9,7 @@ import com.ivy.data.db.migration.Migration123to124_LoanIncludeDateTime
 import com.ivy.data.db.migration.Migration124to125_LoanEditDateTime
 import com.ivy.data.db.migration.Migration126to127_LoanRecordType
 import com.ivy.data.db.migration.Migration129to130_LoanIncludeNote
+import com.ivy.data.db.migration.Migration130to131_CreditCards
 import com.ivy.data.model.LoanType
 import io.kotest.matchers.shouldBe
 import org.junit.Rule
@@ -26,6 +27,37 @@ class IvyRoomDatabaseMigrationTest {
         listOf(IvyRoomDatabase.DeleteSEMigration()),
         FrameworkSQLiteOpenHelperFactory()
     )
+
+    @Test
+    fun migrate130to131_CreditCards() {
+        // given
+        helper.createDatabase(TestDb, 130).close()
+
+        // when
+        val newDb = helper.runMigrationsAndValidate(
+            TestDb,
+            131,
+            true,
+            Migration130to131_CreditCards()
+        )
+
+        // then
+        val cardId = UUID.randomUUID().toString()
+        newDb.execSQL(
+            """
+            INSERT INTO credit_cards (cardholderName, issuer, network, last4, bin, expiryMonth, expiryYear,
+                creditLimit, billingDay, dueDay, repaymentAccountId, payeeVpa, id)
+            VALUES ('Harshith', 'HDFC Bank', 'VISA', '6304', '437551', 12, 2030, 36000.0, 5, 25, NULL, NULL, '$cardId');
+            """.trimIndent()
+        )
+        newDb.query("SELECT last4, creditLimit, id FROM credit_cards").apply {
+            moveToFirst() shouldBe true
+            getString(0) shouldBe "6304"
+            getDouble(1) shouldBe 36000.0
+            getString(2) shouldBe cardId
+        }
+        newDb.close()
+    }
 
     @Test
     fun migrate129to130_LoanIncludeNote() {
