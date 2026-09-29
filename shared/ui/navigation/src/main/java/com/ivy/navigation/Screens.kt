@@ -136,6 +136,13 @@ data object ExchangeRatesScreen : Screen {
 
 data object FeaturesScreen : Screen
 
+/** Add (cardId == null) or edit a credit card. */
+@Suppress("DataClassTypedIDs")
+data class EditCreditCardScreen(val cardId: UUID?) : Screen
+
+@Suppress("DataClassTypedIDs")
+data class CreditCardDetailsScreen(val cardId: UUID) : Screen
+
 data object AttributionsScreen : Screen
 
 data object ContributorsScreen : Screen

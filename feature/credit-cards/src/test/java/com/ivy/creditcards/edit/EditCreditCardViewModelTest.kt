@@ -1,0 +1,120 @@
+package com.ivy.creditcards.edit
+
+import arrow.core.Either
+import com.ivy.base.TestDispatchersProvider
+import com.ivy.data.model.CardNetwork
+import com.ivy.data.repository.AccountRepository
+import com.ivy.domain.usecase.creditcard.CreditCardDraft
+import com.ivy.domain.usecase.creditcard.CreditCardError
+import com.ivy.domain.usecase.creditcard.CreditCardsOverviewUseCase
+import com.ivy.domain.usecase.creditcard.DeleteCreditCardUseCase
+import com.ivy.domain.usecase.creditcard.SaveCreditCardUseCase
+import com.ivy.navigation.Navigation
+import com.ivy.ui.testing.ComposeViewModelTest
+import com.ivy.ui.testing.runTest
+import io.kotest.matchers.shouldBe
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import org.junit.Before
+import org.junit.Test
+
+class EditCreditCardViewModelTest : ComposeViewModelTest() {
+    private val saveUseCase = mockk<SaveCreditCardUseCase>()
+    private val overviewUseCase = mockk<CreditCardsOverviewUseCase>()
+    private val deleteUseCase = mockk<DeleteCreditCardUseCase>(relaxed = true)
+    private val accountRepository = mockk<AccountRepository>()
+    private val nav = mockk<Navigation>(relaxed = true)
+
+    private lateinit var viewModel: EditCreditCardViewModel
+
+    @Before
+    fun setup() {
+        coEvery { overviewUseCase.creditCardIds() } returns emptySet()
+        coEvery { accountRepository.findAll() } returns emptyList()
+        every { nav.back() } returns true
+        viewModel = EditCreditCardViewModel(
+            saveCreditCardUseCase = saveUseCase,
+            overviewUseCase = overviewUseCase,
+            deleteCreditCardUseCase = deleteUseCase,
+            accountRepository = accountRepository,
+            nav = nav,
+            dispatchers = TestDispatchersProvider,
+        )
+    }
+
+    @Test
+    fun `typing a number keeps digits only and detects the network`() {
+        viewModel.runTest(
+            events = listOf(
+                EditCreditCardUiEvent.Load(null),
+                EditCreditCardUiEvent.FieldChange(CardField.NUMBER, "5555 5555 5555 4444x"),
+            )
+        ) {
+            cardNumber shouldBe "5555555555554444"
+            detectedNetwork shouldBe CardNetwork.MASTERCARD
+            network shouldBe CardNetwork.MASTERCARD
+            isEdit shouldBe false
+            loading shouldBe false
+        }
+    }
+
+    @Test
+    fun `save with an empty form reports the required fields`() {
+        viewModel.runTest(events = listOf(EditCreditCardUiEvent.Load(null), EditCreditCardUiEvent.Save)) {
+            errors[CardField.NAME] shouldBe FieldError.REQUIRED
+            errors[CardField.NUMBER] shouldBe FieldError.REQUIRED
+            errors[CardField.EXPIRY] shouldBe FieldError.INVALID_EXPIRY
+            errors[CardField.LIMIT] shouldBe FieldError.INVALID_AMOUNT
+            errors[CardField.STATEMENT_DAY] shouldBe FieldError.DAY_RANGE
+            errors[CardField.DUE_DAY] shouldBe FieldError.DAY_RANGE
+        }
+        coVerify(exactly = 0) { saveUseCase.save(any(), any()) }
+    }
+
+    @Test
+    fun `save with a valid form calls the use case and goes back`() {
+        val draft = slot<CreditCardDraft>()
+        coEvery { saveUseCase.save(capture(draft), null) } returns Either.Right(mockk())
+
+        viewModel.runTest(events = loadAndFill() + EditCreditCardUiEvent.Save) {
+            errors.isEmpty() shouldBe true
+        }
+
+        draft.captured.pan shouldBe "4111111111111111"
+        draft.captured.cvv shouldBe "123"
+        draft.captured.expiryMonth shouldBe 12
+        draft.captured.expiryYear shouldBe 2030
+        draft.captured.creditLimit shouldBe 36000.0
+        draft.captured.billingDay shouldBe 5
+        draft.captured.dueDay shouldBe 25
+        draft.captured.name shouldBe "HDFC Pixel"
+        verify { nav.back() }
+    }
+
+    @Test
+    fun `use case errors are mapped onto fields`() {
+        coEvery { saveUseCase.save(any(), null) } returns Either.Left(CreditCardError.ExpiredCard)
+
+        viewModel.runTest(events = loadAndFill() + EditCreditCardUiEvent.Save) {
+            errors[CardField.EXPIRY] shouldBe FieldError.EXPIRED
+            saving shouldBe false
+        }
+    }
+
+    private fun loadAndFill(): List<EditCreditCardUiEvent> =
+        listOf(EditCreditCardUiEvent.Load(null)) + validFormEvents()
+
+    private fun validFormEvents() = listOf(
+        EditCreditCardUiEvent.FieldChange(CardField.NAME, "HDFC Pixel"),
+        EditCreditCardUiEvent.FieldChange(CardField.NUMBER, "4111111111111111"),
+        EditCreditCardUiEvent.FieldChange(CardField.CVV, "123"),
+        EditCreditCardUiEvent.FieldChange(CardField.EXPIRY, "1230"),
+        EditCreditCardUiEvent.FieldChange(CardField.LIMIT, "36000"),
+        EditCreditCardUiEvent.FieldChange(CardField.STATEMENT_DAY, "5"),
+        EditCreditCardUiEvent.FieldChange(CardField.DUE_DAY, "25"),
+    )
+}
