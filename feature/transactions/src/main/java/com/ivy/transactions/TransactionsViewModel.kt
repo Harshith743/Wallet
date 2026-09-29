@@ -29,6 +29,8 @@ import com.ivy.data.repository.TransactionRepository
 import com.ivy.data.repository.mapper.TransactionMapper
 import com.ivy.design.l0_system.RedLight
 import com.ivy.domain.features.Features
+import com.ivy.domain.usecase.creditcard.CreditCardsOverviewUseCase
+import com.ivy.domain.usecase.creditcard.DeleteCreditCardUseCase
 import com.ivy.frp.then
 import com.ivy.legacy.IvyWalletCtx
 import com.ivy.legacy.data.model.TimePeriod
@@ -96,7 +98,9 @@ class TransactionsViewModel @Inject constructor(
     private val tagRepository: TagRepository,
     private val timeProvider: TimeProvider,
     private val timeConverter: TimeConverter,
-    private val features: Features
+    private val features: Features,
+    private val creditCardsOverviewUseCase: CreditCardsOverviewUseCase,
+    private val deleteCreditCardUseCase: DeleteCreditCardUseCase,
 ) : ComposeViewModel<TransactionsState, TransactionsEvent>() {
 
     private val period = mutableStateOf(ivyContext.selectedPeriod)
@@ -126,6 +130,7 @@ class TransactionsViewModel @Inject constructor(
         mutableStateOf<ImmutableList<TransactionHistoryItem>>(persistentListOf())
 
     private val account = mutableStateOf<LegacyAccount?>(null)
+    private val isCreditCard = mutableStateOf(false)
     private val category = mutableStateOf<Category?>(null)
     private val initWithTransactions = mutableStateOf(false)
     private val treatTransfersAsIncomeExpense = mutableStateOf(false)
@@ -144,6 +149,7 @@ class TransactionsViewModel @Inject constructor(
             categories = getCategories(),
             accounts = getAccounts(),
             account = getAccount(),
+            isCreditCard = getIsCreditCard(),
             category = getCategory(),
             balance = getBalance(),
             balanceBaseCurrency = getBalanceBaseCurrency(),
@@ -186,6 +192,11 @@ class TransactionsViewModel @Inject constructor(
     @Composable
     private fun getAccount(): LegacyAccount? {
         return account.value
+    }
+
+    @Composable
+    private fun getIsCreditCard(): Boolean {
+        return isCreditCard.value
     }
 
     @Composable
@@ -340,6 +351,7 @@ class TransactionsViewModel @Inject constructor(
             accountDao.findById(accountId)?.toLegacyDomain() ?: error("account not found")
         }
         account.value = initialAccount
+        isCreditCard.value = creditCardsOverviewUseCase.isCreditCard(AccountId(accountId))
         val range = period.value.toRange(ivyContext.startDayOfMonth, timeConverter, timeProvider)
 
         if (initialAccount.currency.isNotNullOrBlank()) {
@@ -736,9 +748,15 @@ class TransactionsViewModel @Inject constructor(
 
     private suspend fun deleteAccount(accountId: UUID) {
         ioThread {
-            transactionRepository.deleteAllByAccountId(accountId = AccountId(accountId))
-            plannedPaymentRuleWriter.deletedByAccountId(accountId = accountId)
-            accountRepository.deleteById(AccountId(accountId))
+            val id = AccountId(accountId)
+            if (creditCardsOverviewUseCase.isCreditCard(id)) {
+                // A credit card owns this account: delete the card and everything with it
+                deleteCreditCardUseCase.delete(id)
+            } else {
+                transactionRepository.deleteAllByAccountId(accountId = id)
+                plannedPaymentRuleWriter.deletedByAccountId(accountId = accountId)
+                accountRepository.deleteById(id)
+            }
 
             nav.back()
         }

@@ -17,6 +17,7 @@ data class TransactionsState(
     val categories: ImmutableList<Category>,
     val accounts: ImmutableList<Account>,
     val account: Account?,
+    val isCreditCard: Boolean,
     val category: Category?,
     val balance: Double,
     val balanceBaseCurrency: Double?,

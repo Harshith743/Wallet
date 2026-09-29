@@ -12,6 +12,7 @@ import com.ivy.data.DataWriteEvent
 import com.ivy.data.db.dao.read.AccountDao
 import com.ivy.data.db.dao.read.BudgetDao
 import com.ivy.data.db.dao.read.CategoryDao
+import com.ivy.data.db.dao.read.CreditCardDao
 import com.ivy.data.db.dao.read.LoanDao
 import com.ivy.data.db.dao.read.LoanRecordDao
 import com.ivy.data.db.dao.read.PlannedPaymentRuleDao
@@ -30,7 +31,9 @@ import com.ivy.data.db.dao.write.WriteTagDao
 import com.ivy.data.db.dao.write.WriteTransactionDao
 import com.ivy.data.file.FileSystem
 import com.ivy.data.repository.AccountRepository
+import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.mapper.AccountMapper
+import com.ivy.data.repository.mapper.CreditCardMapper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.async
@@ -72,7 +75,10 @@ class BackupDataUseCase @Inject constructor(
     private val tagsReader: TagDao,
     private val tagAssociationReader: TagAssociationDao,
     private val tagsWriter: WriteTagDao,
-    private val tagAssociationWriter: WriteTagAssociationDao
+    private val tagAssociationWriter: WriteTagAssociationDao,
+    private val creditCardDao: CreditCardDao,
+    private val creditCardRepository: CreditCardRepository,
+    private val creditCardMapper: CreditCardMapper,
 ) {
     suspend fun exportToFile(
         zipFileUri: Uri
@@ -108,6 +114,7 @@ class BackupDataUseCase @Inject constructor(
             val sharedPrefs = async { getSharedPrefsData() }
             val tags = async { tagsReader.findAll() }
             val tagAssociations = async { tagAssociationReader.findAll() }
+            val creditCards = async { creditCardDao.findAll() }
 
             val completeData = IvyWalletCompleteData(
                 accounts = accounts.await(),
@@ -120,7 +127,8 @@ class BackupDataUseCase @Inject constructor(
                 transactions = transactions.await(),
                 sharedPrefs = sharedPrefs.await(),
                 tags = tags.await(),
-                tagAssociations = tagAssociations.await()
+                tagAssociations = tagAssociations.await(),
+                creditCards = creditCards.await(),
             )
 
             json.encodeToString(completeData)
@@ -263,6 +271,12 @@ class BackupDataUseCase @Inject constructor(
             accounts.await()
             budgets.await()
             categories.await()
+
+            // Cards go through the repository (not the DAO) so its memo sees them immediately.
+            val domainCreditCards = with(creditCardMapper) {
+                completeData.creditCards.mapNotNull { entity -> entity.toDomain().getOrNull() }
+            }
+            creditCardRepository.saveMany(domainCreditCards)
 
             onProgress(0.7)
 

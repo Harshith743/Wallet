@@ -4,6 +4,7 @@ import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.Category
 import com.ivy.data.model.CategoryId
+import com.ivy.data.model.CreditCard
 import com.ivy.data.model.Tag
 import com.ivy.data.model.TagId
 import com.ivy.data.model.sync.UniqueId
@@ -23,7 +24,7 @@ class DataObserver @Inject constructor() {
 }
 
 sealed interface DataWriteEvent {
-    data object AllDataChange : AccountChange, CategoryChange
+    data object AllDataChange : AccountChange, CategoryChange, CreditCardChange
 
     sealed interface AccountChange : DataWriteEvent
     data class SaveAccounts(val accounts: List<Account>) : AccountChange
@@ -36,6 +37,10 @@ sealed interface DataWriteEvent {
     sealed interface TagChange : DataWriteEvent
     data class SaveTags(val tags: List<Tag>) : TagChange
     data class DeleteTags(val operation: DeleteOperation<TagId>) : TagChange
+
+    sealed interface CreditCardChange : DataWriteEvent
+    data class SaveCreditCards(val creditCards: List<CreditCard>) : CreditCardChange
+    data class DeleteCreditCards(val operation: DeleteOperation<AccountId>) : CreditCardChange
 }
 
 sealed interface DeleteOperation<out Id : UniqueId> {

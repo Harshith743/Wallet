@@ -73,6 +73,18 @@ class TransactionRepository @Inject constructor(
         }
     ).filterIsInstance<Transfer>()
 
+    /**
+     * All transactions where [accountId] is the source account (incomes, expenses and
+     * outgoing transfers). Incoming transfers are found with [findAllTransfersToAccount].
+     */
+    suspend fun findAllByAccount(
+        accountId: AccountId
+    ): List<Transaction> = retrieveTrns(
+        dbCall = {
+            transactionDao.findAllByAccount(accountId = accountId.value)
+        }
+    )
+
     suspend fun findAllTransfersToAccount(
         toAccountId: AccountId
     ): List<Transfer> = retrieveTrns(
@@ -282,6 +294,16 @@ class TransactionRepository @Inject constructor(
     suspend fun deleteAllByAccountId(accountId: AccountId) {
         withContext(dispatchersProvider.io) {
             writeTransactionDao.deleteAllByAccountId(accountId.value)
+        }
+    }
+
+    /**
+     * Deletes the transfers whose destination is [toAccountId]. Needed when deleting an
+     * account so no transfer is left pointing at a missing destination.
+     */
+    suspend fun deleteAllByToAccountId(toAccountId: AccountId) {
+        withContext(dispatchersProvider.io) {
+            writeTransactionDao.deleteAllByToAccountId(toAccountId.value)
         }
     }
 
