@@ -73,13 +73,20 @@ fun CreditCardsCarouselUiTest(dark: Boolean, modifier: Modifier = Modifier) {
 
 /** For screenshot testing. */
 @Composable
-fun EditCreditCardUiTest(dark: Boolean, isEdit: Boolean, withErrors: Boolean = false, colourDesign: Boolean = false) {
+fun EditCreditCardUiTest(
+    dark: Boolean,
+    isEdit: Boolean,
+    withErrors: Boolean = false,
+    colourDesign: Boolean = false,
+    photoMissing: Boolean = false,
+) {
     IvyPreview(dark = dark) {
         EditCreditCardUi(
             state = CreditCardsPreviewData.editState(
                 isEdit = isEdit,
                 withErrors = withErrors,
                 colourDesign = colourDesign,
+                photoMissing = photoMissing,
             ),
             onEvent = {},
         )

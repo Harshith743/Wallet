@@ -60,6 +60,11 @@ class CreditCardsPaparazziTest(
     }
 
     @Test
+    fun `snapshot edit design photo missing`() {
+        snapshot(theme) { EditCreditCardUiTest(dark = dark, isEdit = true, photoMissing = true) }
+    }
+
+    @Test
     fun `snapshot edit existing`() {
         snapshot(theme) { EditCreditCardUiTest(dark = dark, isEdit = true) }
     }

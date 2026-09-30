@@ -57,6 +57,9 @@ class CreditCardStatementCalculator @Inject constructor(
             dueDate = clamp(statementMonth.plusMonths(1), dueDay)
         }
         val nextStatement = clamp(statementMonth.plusMonths(1), billingDay)
+        // A due day that only exists in longer months (e.g. statement 28th, due 29th, in
+        // February) can never fall after the next statement.
+        if (dueDate.isAfter(nextStatement)) dueDate = nextStatement
         return StatementDates(
             lastStatementDate = lastStatement,
             dueDate = dueDate,

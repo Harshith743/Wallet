@@ -18,6 +18,7 @@ import com.ivy.data.model.testing.account
 import com.ivy.data.model.testing.creditCard
 import com.ivy.data.repository.AccountRepository
 import com.ivy.data.repository.CurrencyRepository
+import com.ivy.data.skin.fake.FakeCardSkinImageStore
 import com.ivy.domain.model.CreditCardStatement
 import com.ivy.domain.model.CreditCardWithStatement
 import com.ivy.domain.model.StatementDates
@@ -74,7 +75,7 @@ class CreditCardsViewModelTest : ComposeViewModelTest() {
             deleteCreditCardUseCase = deleteCreditCardUseCase,
             accountRepository = accountRepository,
             currencyRepository = currencyRepository,
-            uiMapper = CreditCardUiMapper(StatementLabelMapper(), CardSkinResolver()),
+            uiMapper = CreditCardUiMapper(StatementLabelMapper(), CardSkinResolver(FakeCardSkinImageStore())),
             session = session,
             dataObserver = DataObserver(),
             dispatchers = TestDispatchersProvider,

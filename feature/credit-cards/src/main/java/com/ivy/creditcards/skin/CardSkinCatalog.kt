@@ -10,8 +10,8 @@ import kotlinx.collections.immutable.toImmutableList
 
 /**
  * How a card face is painted: gradient stops (one colour = solid), the text colour that
- * reads on them, an optional accent (issuer brand colour) and an optional wordmark that
- * replaces the issuer text.
+ * reads on them, an optional accent (issuer brand colour), an optional wordmark that
+ * replaces the issuer text, and an optional photo (device path) drawn under the content.
  */
 @Immutable
 data class CardSkinUi(
@@ -19,6 +19,7 @@ data class CardSkinUi(
     val textColor: Color,
     val accent: Color?,
     val wordmark: String?,
+    val imagePath: String?,
 )
 
 private data class Theme(
@@ -153,6 +154,7 @@ object CardSkinCatalog {
             textColor = White,
             accent = theme.accent,
             wordmark = theme.wordmark,
+            imagePath = null,
         )
     }
 
@@ -162,6 +164,7 @@ object CardSkinCatalog {
         textColor = findContrastTextColor(color),
         accent = null,
         wordmark = null,
+        imagePath = null,
     )
 
     private fun tokenize(text: String): List<String> =

@@ -31,6 +31,7 @@ class CreditCardUiMapper @Inject constructor(
         tier = item.card.tier?.value,
         skin = skinResolver.resolve(
             mode = item.card.skin,
+            cardId = item.card.id,
             issuer = item.card.issuer?.value,
             cardName = item.account.name.value,
             network = item.card.network,

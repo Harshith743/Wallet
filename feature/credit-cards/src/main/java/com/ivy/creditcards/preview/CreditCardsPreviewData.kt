@@ -120,6 +120,7 @@ object CreditCardsPreviewData {
         isEdit: Boolean = false,
         withErrors: Boolean = false,
         colourDesign: Boolean = false,
+        photoMissing: Boolean = false,
     ): EditCreditCardUiState = EditCreditCardUiState(
         isEdit = isEdit,
         last4 = if (isEdit) "6304" else null,
@@ -141,7 +142,11 @@ object CreditCardsPreviewData {
         openingUnbilled = "",
         color = IVY_COLOR_PICKER_COLORS_FREE.first(),
         palette = IVY_COLOR_PICKER_COLORS_FREE.toImmutableList(),
-        skinMode = if (colourDesign) CardSkinMode.COLOR else CardSkinMode.AUTO,
+        skinMode = when {
+            photoMissing -> CardSkinMode.IMAGE
+            colourDesign -> CardSkinMode.COLOR
+            else -> CardSkinMode.AUTO
+        },
         skinPreview = CardSkinCatalog.resolve(
             issuer = "HDFC Bank",
             cardName = "HDFC Pixel Go",
@@ -149,6 +154,8 @@ object CreditCardsPreviewData {
             tier = "Platinum",
             fallback = IVY_COLOR_PICKER_COLORS_FREE.first(),
         ),
+        photoPath = null,
+        photoMissing = photoMissing,
         accounts = accounts,
         repaymentAccountId = bankId,
         payeeVpa = "hdfccard@upi",

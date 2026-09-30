@@ -19,6 +19,7 @@ import com.ivy.data.repository.CreditCardSecretsRepository
 import com.ivy.data.repository.ExchangeRatesRepository
 import com.ivy.data.repository.TagRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.data.skin.CardSkinImageStore
 import com.ivy.legacy.utils.ioThread
 import com.ivy.navigation.MainScreen
 import com.ivy.navigation.Navigation
@@ -44,6 +45,7 @@ class LogoutLogic @Inject constructor(
     private val exchangeRatesRepository: ExchangeRatesRepository,
     private val creditCardRepository: CreditCardRepository,
     private val creditCardSecretsRepository: CreditCardSecretsRepository,
+    private val cardSkinImageStore: CardSkinImageStore,
 ) {
     suspend fun logout() {
         ioThread {
@@ -73,6 +75,7 @@ class LogoutLogic @Inject constructor(
         exchangeRatesRepository.deleteAll()
         creditCardRepository.deleteAll()
         creditCardSecretsRepository.clearAll()
+        cardSkinImageStore.deleteAll()
     }
 
     suspend fun cloudLogout() {

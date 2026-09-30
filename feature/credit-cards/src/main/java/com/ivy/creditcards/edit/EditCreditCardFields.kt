@@ -24,6 +24,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,22 +37,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.ivy.creditcards.skin.CardSkinUi
 import com.ivy.creditcards.skin.brush
 import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.CardSkinMode
 import com.ivy.ui.R
 import kotlinx.collections.immutable.ImmutableList
+import java.io.File
 
 private val SwatchSize = 40.dp
 private val SelectedSwatchBorder = 3.dp
 private val SkinPreviewHeight = 56.dp
+private val PhotoPreviewHeight = 120.dp
 
 @Composable
 private fun FieldError.text(): String = when (this) {
@@ -63,6 +68,7 @@ private fun FieldError.text(): String = when (this) {
     FieldError.INVALID_AMOUNT -> stringResource(R.string.error_amount_invalid)
     FieldError.DAY_RANGE -> stringResource(R.string.error_day_out_of_range)
     FieldError.SECRETS -> stringResource(R.string.error_secrets_save_failed)
+    FieldError.PHOTO -> stringResource(R.string.error_photo_import_failed)
 }
 
 @Composable
@@ -293,6 +299,7 @@ internal fun OpeningBalanceSection(
 internal fun DesignSection(
     state: EditCreditCardUiState,
     onEvent: (EditCreditCardUiEvent) -> Unit,
+    onPickPhoto: () -> Unit,
 ) {
     Column {
         Text(text = stringResource(R.string.card_design), style = MaterialTheme.typography.labelLarge)
@@ -308,18 +315,72 @@ internal fun DesignSection(
                 onClick = { onEvent(EditCreditCardUiEvent.SkinModeSelect(CardSkinMode.COLOR)) },
                 label = { Text(stringResource(R.string.design_colour)) },
             )
+            FilterChip(
+                selected = state.skinMode == CardSkinMode.IMAGE,
+                onClick = {
+                    if (state.photoPath == null) {
+                        onPickPhoto()
+                    } else {
+                        onEvent(EditCreditCardUiEvent.SkinModeSelect(CardSkinMode.IMAGE))
+                    }
+                },
+                label = { Text(stringResource(R.string.design_photo)) },
+            )
         }
         Spacer(Modifier.height(8.dp))
-        if (state.skinMode == CardSkinMode.AUTO) {
-            SkinPreviewStrip(skin = state.skinPreview)
-            Spacer(Modifier.height(4.dp))
-            Text(text = stringResource(R.string.bank_theme_hint), style = MaterialTheme.typography.bodySmall)
-        } else {
-            ColorSwatchRow(
+        when (state.skinMode) {
+            CardSkinMode.AUTO -> {
+                SkinPreviewStrip(skin = state.skinPreview)
+                Spacer(Modifier.height(4.dp))
+                Text(text = stringResource(R.string.bank_theme_hint), style = MaterialTheme.typography.bodySmall)
+            }
+
+            CardSkinMode.COLOR -> ColorSwatchRow(
                 palette = state.palette,
                 selected = state.color,
                 onSelect = { onEvent(EditCreditCardUiEvent.ColorSelect(it)) },
             )
+
+            CardSkinMode.IMAGE -> PhotoSection(state = state, onEvent = onEvent, onPickPhoto = onPickPhoto)
+        }
+        state.errors[CardField.DESIGN]?.let { error ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = error.text(),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhotoSection(
+    state: EditCreditCardUiState,
+    onEvent: (EditCreditCardUiEvent) -> Unit,
+    onPickPhoto: () -> Unit,
+) {
+    Column {
+        val path = state.photoPath
+        if (path != null) {
+            AsyncImage(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(PhotoPreviewHeight)
+                    .clip(RoundedCornerShape(12.dp)),
+                model = File(path),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+            )
+        } else if (state.photoMissing) {
+            Text(text = stringResource(R.string.photo_missing_on_device), style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onPickPhoto) { Text(stringResource(R.string.choose_photo)) }
+            TextButton(onClick = { onEvent(EditCreditCardUiEvent.PhotoRemove) }) {
+                Text(stringResource(R.string.remove_photo))
+            }
         }
     }
 }

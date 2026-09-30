@@ -1,5 +1,6 @@
 package com.ivy.creditcards.edit
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -15,6 +16,7 @@ import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.primitive.ColorInt
 import com.ivy.data.repository.AccountRepository
+import com.ivy.data.skin.CardSkinImageStore
 import com.ivy.design.IVY_COLOR_PICKER_COLORS_FREE
 import com.ivy.domain.creditcard.BinLookup
 import com.ivy.domain.creditcard.CardNetworkDetector
@@ -62,6 +64,7 @@ class EditCreditCardViewModel @Inject constructor(
     private val deleteCreditCardUseCase: DeleteCreditCardUseCase,
     private val accountRepository: AccountRepository,
     private val binLookup: BinLookup,
+    private val imageStore: CardSkinImageStore,
     private val nav: Navigation,
     private val dispatchers: DispatchersProvider,
 ) : ComposeViewModel<EditCreditCardUiState, EditCreditCardUiEvent>() {
@@ -91,6 +94,8 @@ class EditCreditCardViewModel @Inject constructor(
     private var openingUnbilled by mutableStateOf("")
     private var color by mutableStateOf(IVY_COLOR_PICKER_COLORS_FREE.first())
     private var skinMode by mutableStateOf(CardSkinMode.AUTO)
+    private var existingPhotoPath by mutableStateOf<String?>(null)
+    private var stagedPhotoPath by mutableStateOf<String?>(null)
     private var accounts by mutableStateOf<ImmutableList<AccountChipUi>>(persistentListOf())
     private var repaymentAccountId by mutableStateOf<AccountId?>(null)
     private var payeeVpa by mutableStateOf("")
@@ -129,6 +134,8 @@ class EditCreditCardViewModel @Inject constructor(
             tier = detectedTier ?: existingTier,
             fallback = color,
         ),
+        photoPath = stagedPhotoPath ?: existingPhotoPath,
+        photoMissing = skinMode == CardSkinMode.IMAGE && stagedPhotoPath == null && existingPhotoPath == null,
         accounts = accounts,
         repaymentAccountId = repaymentAccountId,
         payeeVpa = payeeVpa,
@@ -146,6 +153,8 @@ class EditCreditCardViewModel @Inject constructor(
                 is EditCreditCardUiEvent.NetworkOverride -> networkOverride = event.network
                 is EditCreditCardUiEvent.ColorSelect -> color = event.color
                 is EditCreditCardUiEvent.SkinModeSelect -> skinMode = event.mode
+                is EditCreditCardUiEvent.PhotoPicked -> stagePhoto(event.uri)
+                EditCreditCardUiEvent.PhotoRemove -> removePhoto()
                 is EditCreditCardUiEvent.RepaymentAccountSelect -> repaymentAccountId = event.id
                 EditCreditCardUiEvent.ReenterNumber -> numberEntryVisible = true
                 EditCreditCardUiEvent.Save -> save()
@@ -157,6 +166,8 @@ class EditCreditCardViewModel @Inject constructor(
     }
 
     private suspend fun load(cardId: UUID?) {
+        imageStore.discardStaged()
+        stagedPhotoPath = null
         val cardIds = overviewUseCase.creditCardIds()
         accounts = accountRepository.findAll()
             .filter { it.id !in cardIds }
@@ -178,7 +189,8 @@ class EditCreditCardViewModel @Inject constructor(
             statementDay = loaded.card.billingDay.value.toString()
             dueDay = loaded.card.dueDay.value.toString()
             color = loaded.account.color.value.toComposeColor()
-            skinMode = if (loaded.card.skin == CardSkinMode.COLOR) CardSkinMode.COLOR else CardSkinMode.AUTO
+            skinMode = loaded.card.skin
+            existingPhotoPath = imageStore.imagePath(loaded.card.id.value)
             existingTier = loaded.card.tier?.value
             repaymentAccountId = loaded.card.repaymentAccountId
             payeeVpa = loaded.card.payeeVpa?.value.orEmpty()
@@ -212,7 +224,33 @@ class EditCreditCardViewModel @Inject constructor(
             CardField.OPENING_DUE -> openingDue = value
             CardField.OPENING_UNBILLED -> openingUnbilled = value
             CardField.PAYEE_VPA -> payeeVpa = value
+            CardField.DESIGN -> Unit // not a text field; photo errors are cleared in stagePhoto
         }
+    }
+
+    private suspend fun stagePhoto(uri: Uri) {
+        errors = errors.toMutableMap().apply { remove(CardField.DESIGN) }.toImmutableMap()
+        imageStore.stage(uri).fold(
+            onSuccess = {
+                stagedPhotoPath = imageStore.stagedPath()
+                skinMode = CardSkinMode.IMAGE
+            },
+            onFailure = {
+                errors = errors.toMutableMap().apply { put(CardField.DESIGN, FieldError.PHOTO) }.toImmutableMap()
+            },
+        )
+    }
+
+    private fun removePhoto() {
+        imageStore.discardStaged()
+        stagedPhotoPath = null
+        existingPhotoPath = null
+        skinMode = CardSkinMode.AUTO
+    }
+
+    override fun onCleared() {
+        imageStore.discardStaged()
+        super.onCleared()
     }
 
     private suspend fun save() {
@@ -287,6 +325,7 @@ class EditCreditCardViewModel @Inject constructor(
         CreditCardError.InvalidDueDay -> CardField.DUE_DAY to FieldError.DAY_RANGE
         CreditCardError.InvalidOpeningAmount -> CardField.OPENING_DUE to FieldError.INVALID_AMOUNT
         is CreditCardError.SecretsSaveFailed -> CardField.NUMBER to FieldError.SECRETS
+        CreditCardError.SkinImageFailed -> CardField.DESIGN to FieldError.PHOTO
     }
 
     private suspend fun delete() {

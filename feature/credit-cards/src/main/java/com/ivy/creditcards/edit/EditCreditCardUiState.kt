@@ -2,6 +2,7 @@
 
 package com.ivy.creditcards.edit
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import com.ivy.creditcards.model.AccountChipUi
@@ -26,6 +27,7 @@ enum class CardField {
     OPENING_DUE,
     OPENING_UNBILLED,
     PAYEE_VPA,
+    DESIGN,
 }
 
 enum class FieldError {
@@ -37,6 +39,7 @@ enum class FieldError {
     INVALID_AMOUNT,
     DAY_RANGE,
     SECRETS,
+    PHOTO,
 }
 
 @Immutable
@@ -61,9 +64,13 @@ data class EditCreditCardUiState(
     val openingUnbilled: String,
     val color: Color,
     val palette: ImmutableList<Color>,
-    /** AUTO (bank theme) or COLOR (the swatch); the preview shows what AUTO would paint. */
+    /** AUTO (bank theme), COLOR (the swatch) or IMAGE (photo); the preview shows what AUTO would paint. */
     val skinMode: CardSkinMode,
     val skinPreview: CardSkinUi,
+    /** The staged or stored photo to show in the editor, if any. */
+    val photoPath: String?,
+    /** Photo mode is selected but no photo exists on this device. */
+    val photoMissing: Boolean,
     val accounts: ImmutableList<AccountChipUi>,
     val repaymentAccountId: AccountId?,
     val payeeVpa: String,
@@ -82,6 +89,8 @@ sealed interface EditCreditCardUiEvent {
     data class NetworkOverride(val network: CardNetwork?) : EditCreditCardUiEvent
     data class ColorSelect(val color: Color) : EditCreditCardUiEvent
     data class SkinModeSelect(val mode: CardSkinMode) : EditCreditCardUiEvent
+    data class PhotoPicked(val uri: Uri) : EditCreditCardUiEvent
+    data object PhotoRemove : EditCreditCardUiEvent
     data class RepaymentAccountSelect(val id: AccountId?) : EditCreditCardUiEvent
     data object ReenterNumber : EditCreditCardUiEvent
     data object Save : EditCreditCardUiEvent

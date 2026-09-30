@@ -49,4 +49,5 @@ sealed interface CreditCardError {
     data object InvalidOpeningAmount : CreditCardError
     data object CardNotFound : CreditCardError
     data class SecretsSaveFailed(val error: CardSecretsError) : CreditCardError
+    data object SkinImageFailed : CreditCardError
 }

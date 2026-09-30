@@ -121,6 +121,19 @@ class CreditCardStatementCalculatorTest {
     }
 
     @Test
+    fun `due day missing from a short month never lands after the next statement`() {
+        val dates = calculator.statementDates(
+            billingDay = DayOfMonth.unsafe(28),
+            dueDay = DayOfMonth.unsafe(29),
+            today = LocalDate.of(2027, 3, 23),
+        )
+
+        dates.lastStatementDate shouldBe LocalDate.of(2027, 2, 28)
+        dates.nextStatementDate shouldBe LocalDate.of(2027, 3, 28)
+        dates.dueDate shouldBe LocalDate.of(2027, 3, 28)
+    }
+
+    @Test
     fun `property - date invariants`() = runTest {
         val arbDate = arbitrary {
             LocalDate.of(

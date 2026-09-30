@@ -1,5 +1,8 @@
 package com.ivy.creditcards.edit
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,9 +39,15 @@ fun EditCreditCardScreenImpl(
     LaunchedEffect(screen.cardId) {
         viewModel.onEvent(EditCreditCardUiEvent.Load(screen.cardId))
     }
+    // The photo picker resolves through the host activity, so it lives here and never in
+    // EditCreditCardUi, which screenshot tests render without an activity.
+    val photoPicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        uri?.let { viewModel.onEvent(EditCreditCardUiEvent.PhotoPicked(it)) }
+    }
     EditCreditCardUi(
         state = viewModel.uiState(),
         onEvent = viewModel::onEvent,
+        onPickPhoto = { photoPicker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) },
     )
 }
 
@@ -48,6 +57,7 @@ fun EditCreditCardUi(
     state: EditCreditCardUiState,
     onEvent: (EditCreditCardUiEvent) -> Unit,
     modifier: Modifier = Modifier,
+    onPickPhoto: () -> Unit = {},
 ) {
     val nav = navigation()
     Scaffold(
@@ -78,7 +88,7 @@ fun EditCreditCardUi(
             if (!state.isEdit) {
                 item { OpeningBalanceSection(state = state, onEvent = onEvent) }
             }
-            item { DesignSection(state = state, onEvent = onEvent) }
+            item { DesignSection(state = state, onEvent = onEvent, onPickPhoto = onPickPhoto) }
             item { RepaymentAccountSection(state = state, onEvent = onEvent) }
             item { PayeeVpaField(state = state, onEvent = onEvent) }
             item { Actions(state = state, onEvent = onEvent) }

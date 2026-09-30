@@ -24,11 +24,13 @@ import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.CreditCardSecretsRepository
 import com.ivy.data.repository.CurrencyRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.data.skin.fake.FakeCardSkinImageStore
 import com.ivy.domain.creditcard.BinLookup
 import com.ivy.domain.creditcard.BinRecord
 import com.ivy.domain.model.CreditCardWithAccount
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.next
@@ -55,6 +57,7 @@ class SaveCreditCardUseCaseTest {
     private val dataObserver = mockk<DataObserver>(relaxed = true)
     private val timeConverter = TestTimeConverter()
     private val binLookup = mockk<BinLookup>()
+    private val imageStore = FakeCardSkinImageStore()
 
     private val today = LocalDate.of(2026, 9, 10)
     private val now = today.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC)
@@ -81,6 +84,7 @@ class SaveCreditCardUseCaseTest {
             timeConverter = timeConverter,
             dataObserver = dataObserver,
             binLookup = binLookup,
+            imageStore = imageStore,
         )
     }
 
@@ -185,6 +189,32 @@ class SaveCreditCardUseCaseTest {
         val result = useCase.save(validDraft().copy(skin = CardSkinMode.COLOR), existing = null).shouldBeRight()
 
         result.card.skin shouldBe CardSkinMode.COLOR
+    }
+
+    @Test
+    fun `a staged photo is committed under the card id when the design is Photo`() = runTest {
+        imageStore.staged = "staging-1.jpg"
+
+        val result = useCase.save(validDraft().copy(skin = CardSkinMode.IMAGE), existing = null).shouldBeRight()
+
+        result.card.skin shouldBe CardSkinMode.IMAGE
+        imageStore.imagePath(result.card.id.value) shouldBe "${result.card.id.value}-staging-1.jpg"
+        imageStore.hasStaged() shouldBe false
+    }
+
+    @Test
+    fun `switching away from Photo deletes the card's photo`() = runTest {
+        val id = AccountId(UUID.randomUUID())
+        imageStore.committed[id.value] = "old.jpg"
+        val existingCard: CreditCard = Arb.creditCard(id = Some(id)).next()
+        val existingAccount: Account = Arb.account(accountId = Some(id)).next()
+
+        useCase.save(
+            validDraft().copy(pan = null, cvv = null, skin = CardSkinMode.COLOR),
+            CreditCardWithAccount(existingCard, existingAccount),
+        ).shouldBeRight()
+
+        imageStore.imagePath(id.value).shouldBeNull()
     }
 
     @Test

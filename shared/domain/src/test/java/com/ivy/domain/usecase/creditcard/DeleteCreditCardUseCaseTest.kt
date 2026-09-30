@@ -8,6 +8,7 @@ import com.ivy.data.repository.AccountRepository
 import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.CreditCardSecretsRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.data.skin.CardSkinImageStore
 import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -20,6 +21,7 @@ class DeleteCreditCardUseCaseTest {
     private val accountRepository = mockk<AccountRepository>(relaxed = true)
     private val creditCardRepository = mockk<CreditCardRepository>(relaxed = true)
     private val secretsRepository = mockk<CreditCardSecretsRepository>(relaxed = true)
+    private val imageStore = mockk<CardSkinImageStore>(relaxed = true)
     private val dataObserver = mockk<DataObserver>(relaxed = true)
 
     private val useCase = DeleteCreditCardUseCase(
@@ -28,11 +30,12 @@ class DeleteCreditCardUseCaseTest {
         accountRepository = accountRepository,
         creditCardRepository = creditCardRepository,
         secretsRepository = secretsRepository,
+        imageStore = imageStore,
         dataObserver = dataObserver,
     )
 
     @Test
-    fun `deletes transactions both ways, planned payments, account, card row and secrets`() = runTest {
+    fun `deletes transactions both ways, planned payments, account, card row, secrets and photo`() = runTest {
         val cardId = AccountId(UUID.randomUUID())
 
         useCase.delete(cardId)
@@ -44,6 +47,7 @@ class DeleteCreditCardUseCaseTest {
             accountRepository.deleteById(cardId)
             creditCardRepository.deleteById(cardId)
             secretsRepository.clear(cardId)
+            imageStore.delete(cardId.value)
             dataObserver.post(DataWriteEvent.AllDataChange)
         }
     }

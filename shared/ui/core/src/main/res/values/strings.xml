@@ -565,6 +565,11 @@
     <string name="design_auto">Auto</string>
     <string name="design_colour">Colour</string>
     <string name="bank_theme">Bank theme</string>
+    <string name="design_photo">Photo</string>
+    <string name="choose_photo">Choose photo</string>
+    <string name="remove_photo">Remove photo</string>
+    <string name="photo_missing_on_device">The photo for this card isn\'t on this device. Pick it again, or switch to Auto.</string>
+    <string name="error_photo_import_failed">Couldn\'t import that photo</string>
     <string name="bank_theme_hint">Auto paints the card from the bank, product tier and network. Choose Colour to use a plain swatch instead.</string>
     <string name="error_field_required">Required</string>
     <string name="error_card_number_invalid">Enter a valid card number</string>

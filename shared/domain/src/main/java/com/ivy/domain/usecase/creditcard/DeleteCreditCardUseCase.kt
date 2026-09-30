@@ -8,12 +8,13 @@ import com.ivy.data.repository.AccountRepository
 import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.CreditCardSecretsRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.data.skin.CardSkinImageStore
 import javax.inject.Inject
 
 /**
  * Deletes a credit card and everything that belongs to it, mirroring how an account is
  * deleted from the Transactions screen, plus the transfers *into* the card (repayments)
- * so no transfer is left pointing at a missing destination.
+ * so no transfer is left pointing at a missing destination, and the card's photo skin.
  */
 class DeleteCreditCardUseCase @Inject constructor(
     private val transactionRepository: TransactionRepository,
@@ -21,6 +22,7 @@ class DeleteCreditCardUseCase @Inject constructor(
     private val accountRepository: AccountRepository,
     private val creditCardRepository: CreditCardRepository,
     private val secretsRepository: CreditCardSecretsRepository,
+    private val imageStore: CardSkinImageStore,
     private val dataObserver: DataObserver,
 ) {
 
@@ -31,6 +33,7 @@ class DeleteCreditCardUseCase @Inject constructor(
         accountRepository.deleteById(cardId)
         creditCardRepository.deleteById(cardId)
         secretsRepository.clear(cardId)
+        imageStore.delete(cardId.value)
         dataObserver.post(DataWriteEvent.AllDataChange)
     }
 }

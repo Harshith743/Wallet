@@ -13,6 +13,7 @@ import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.CardSecrets
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.CreditCard
 import com.ivy.data.model.Expense
 import com.ivy.data.model.PositiveValue
@@ -31,6 +32,7 @@ import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.CreditCardSecretsRepository
 import com.ivy.data.repository.CurrencyRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.data.skin.CardSkinImageStore
 import com.ivy.domain.creditcard.BinLookup
 import com.ivy.domain.creditcard.CardNetworkDetector
 import com.ivy.domain.creditcard.defaultIssuerFor
@@ -51,9 +53,10 @@ private const val OpeningBalanceTitle = "Opening balance"
 /**
  * Creates or updates a credit card together with the account row that backs it.
  *
- * Write order matters: the card row is saved before the account row, because the
- * account save event makes the Accounts tab reload and its filter must already know
- * that the new account is a card.
+ * Write order matters: a staged photo is committed first (so a failure leaves the rows
+ * untouched), then the card row is saved before the account row, because the account
+ * save event makes the Accounts tab reload and its filter must already know that the
+ * new account is a card.
  */
 class SaveCreditCardUseCase @Inject constructor(
     private val accountRepository: AccountRepository,
@@ -66,6 +69,7 @@ class SaveCreditCardUseCase @Inject constructor(
     private val timeConverter: TimeConverter,
     private val dataObserver: DataObserver,
     private val binLookup: BinLookup,
+    private val imageStore: CardSkinImageStore,
 ) {
 
     suspend fun save(
@@ -116,6 +120,7 @@ class SaveCreditCardUseCase @Inject constructor(
             skin = draft.skin,
         )
 
+        commitSkinImage(id, draft.skin)
         creditCardRepository.save(card)
         accountRepository.save(account)
         if (existing == null) {
@@ -127,6 +132,17 @@ class SaveCreditCardUseCase @Inject constructor(
         }
 
         CreditCardWithAccount(card = card, account = account)
+    }
+
+    private fun Raise<CreditCardError>.commitSkinImage(id: AccountId, skin: CardSkinMode) {
+        if (skin == CardSkinMode.IMAGE) {
+            if (imageStore.hasStaged()) {
+                ensureNotNull(imageStore.commitStaged(id.value)) { CreditCardError.SkinImageFailed }
+            }
+        } else {
+            imageStore.discardStaged()
+            imageStore.delete(id.value)
+        }
     }
 
     private fun Raise<CreditCardError>.validateExpiry(draft: CreditCardDraft): YearMonth {

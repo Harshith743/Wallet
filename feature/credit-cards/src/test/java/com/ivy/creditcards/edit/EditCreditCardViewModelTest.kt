@@ -5,6 +5,7 @@ import com.ivy.base.TestDispatchersProvider
 import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.CardSkinMode
 import com.ivy.data.repository.AccountRepository
+import com.ivy.data.skin.fake.FakeCardSkinImageStore
 import com.ivy.domain.creditcard.BinLookup
 import com.ivy.domain.creditcard.BinRecord
 import com.ivy.domain.usecase.creditcard.CreditCardDraft
@@ -31,6 +32,7 @@ class EditCreditCardViewModelTest : ComposeViewModelTest() {
     private val deleteUseCase = mockk<DeleteCreditCardUseCase>(relaxed = true)
     private val accountRepository = mockk<AccountRepository>()
     private val binLookup = mockk<BinLookup>()
+    private val imageStore = FakeCardSkinImageStore()
     private val nav = mockk<Navigation>(relaxed = true)
 
     private lateinit var viewModel: EditCreditCardViewModel
@@ -47,6 +49,7 @@ class EditCreditCardViewModelTest : ComposeViewModelTest() {
             deleteCreditCardUseCase = deleteUseCase,
             accountRepository = accountRepository,
             binLookup = binLookup,
+            imageStore = imageStore,
             nav = nav,
             dispatchers = TestDispatchersProvider,
         )
@@ -119,6 +122,32 @@ class EditCreditCardViewModelTest : ComposeViewModelTest() {
         }
         viewModel.runTest(events = listOf(EditCreditCardUiEvent.SkinModeSelect(CardSkinMode.COLOR))) {
             skinMode shouldBe CardSkinMode.COLOR
+        }
+    }
+
+    @Test
+    fun `picking a photo stages it and selects the photo design, removing it goes back to auto`() {
+        val uri = mockk<android.net.Uri>()
+        viewModel.runTest(events = listOf(EditCreditCardUiEvent.Load(null), EditCreditCardUiEvent.PhotoPicked(uri))) {
+            skinMode shouldBe CardSkinMode.IMAGE
+            photoPath shouldBe "staging-1.jpg"
+            photoMissing shouldBe false
+        }
+        viewModel.runTest(events = listOf(EditCreditCardUiEvent.PhotoRemove)) {
+            skinMode shouldBe CardSkinMode.AUTO
+            photoPath shouldBe null
+        }
+        imageStore.hasStaged() shouldBe false
+    }
+
+    @Test
+    fun `a failed photo import reports a design error and keeps the mode`() {
+        imageStore.stageFails = true
+        viewModel.runTest(
+            events = listOf(EditCreditCardUiEvent.Load(null), EditCreditCardUiEvent.PhotoPicked(mockk()))
+        ) {
+            skinMode shouldBe CardSkinMode.AUTO
+            errors[CardField.DESIGN] shouldBe FieldError.PHOTO
         }
     }
 

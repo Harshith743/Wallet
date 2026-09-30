@@ -3,6 +3,7 @@ package com.ivy.creditcards.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -33,12 +35,15 @@ import androidx.compose.ui.unit.sp
 import com.ivy.creditcards.model.CreditCardUi
 import com.ivy.creditcards.skin.brush
 import com.ivy.data.model.CardNetwork
+import coil.compose.AsyncImage
 import com.ivy.ui.R
+import java.io.File
 import com.ivy.wallet.ui.theme.Red
 
 object CreditCardFaceDefaults {
     const val AspectRatio = 1.586f
     const val SecondaryAlpha = 0.8f
+    const val PhotoScrimAlpha = 0.35f
     val CornerRadius: Dp = 20.dp
     val Padding: Dp = 20.dp
     val ChipWidth: Dp = 38.dp
@@ -50,7 +55,7 @@ object CreditCardFaceDefaults {
 /**
  * The card face: issuer wordmark, tier and accent, due amount and status, chip, network
  * and last 4 digits, cardholder name, remaining limit, and an optional "Pay now" button.
- * Painted with the card's skin (bank gradient, plain colour).
+ * Painted with the card's skin (bank gradient, plain colour or the owner's photo under a scrim).
  * Theme-agnostic (explicit styles) so it renders the same in the legacy tab and M3 screens.
  */
 @Composable
@@ -68,6 +73,7 @@ fun CreditCardFace(
             .clip(RoundedCornerShape(CreditCardFaceDefaults.CornerRadius))
             .background(card.skin.brush())
     ) {
+        card.skin.imagePath?.let { PhotoBackdrop(path = it) }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -80,6 +86,23 @@ fun CreditCardFace(
             FaceFooter(card = card, contrast = contrast, showPayNow = showPayNow, onPayNow = onPayNow)
         }
     }
+}
+
+@Composable
+private fun BoxScope.PhotoBackdrop(
+    path: String,
+) {
+    AsyncImage(
+        modifier = Modifier.matchParentSize(),
+        model = File(path),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(Color.Black.copy(alpha = CreditCardFaceDefaults.PhotoScrimAlpha))
+    )
 }
 
 @Composable
