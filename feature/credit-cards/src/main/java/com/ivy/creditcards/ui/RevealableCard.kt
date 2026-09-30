@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,6 +25,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -104,6 +106,8 @@ fun RevealableCard(
             card = card,
             modifier = Modifier
                 .offset { IntOffset(state.requireOffset().roundToInt(), 0) }
+                // Clip before the gesture/click modifiers so touch feedback follows the rounded face
+                .clip(RoundedCornerShape(CreditCardFaceDefaults.CornerRadius))
                 .anchoredDraggable(state, Orientation.Horizontal)
                 .swipeUpToExpand(enabled = swipeUpEnabled) { current.onSwipeUp() }
                 .clickable {

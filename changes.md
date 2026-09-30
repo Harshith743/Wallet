@@ -57,3 +57,4 @@ Branching: development happens on `dev`; `main` stays stable and receives merges
 - Removed the bottom card carousel strip from the Credit cards segment: every card is already visible in the stack and the main "+" button adds cards, so the strip was redundant (and it overlapped the list and the "+" button on device).
 - The "View details" pill under each card is now a small, quiet caption-sized chip with a chevron (thin border, no fill) and sits exactly midway between cards with equal spacing above and below, as in CRED.
 - The bottom navigation bar (Home | Accounts) is now frosted glass: a blurred, black-tinted view of the content scrolling behind it with a hairline top edge (Haze 0.7.3; on Android 11 and below it degrades to a tinted matte panel).
+- Fix: pressing a card now highlights only the rounded card, not the rectangle around it (the touch feedback is clipped to the card shape before the drag and click handlers).
