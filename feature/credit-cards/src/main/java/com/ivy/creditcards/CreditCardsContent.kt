@@ -1,6 +1,7 @@
 package com.ivy.creditcards
 
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -99,11 +100,11 @@ fun Modifier.closeRevealOnTapOutside(
 ): Modifier = if (enabled) pointerInput(onClose) { detectTapGestures { onClose() } } else this
 
 /**
- * Sheets and dialogs of the segment (rendered outside the scrolling list), the back-press
- * handling for a revealed card, and the one-shot UPI launch after "Pay now".
+ * Sheets, dialogs and the reorder modal of the segment (rendered outside the scrolling list),
+ * the back-press handling for a revealed card, and the one-shot UPI launch after "Pay now".
  */
 @Composable
-fun CreditCardsOverlays(
+fun BoxScope.CreditCardsOverlays(
     state: CreditCardsUiState,
     onEvent: (CreditCardsUiEvent) -> Unit,
 ) {
@@ -123,6 +124,7 @@ fun CreditCardsOverlays(
             onDismiss = { onEvent(CreditCardsUiEvent.DeleteDismiss) },
         )
     }
+    CreditCardsReorderModal(visible = state.reorderVisible, cards = state.cards, onEvent = onEvent)
     val context = LocalContext.current
     LaunchedEffect(state.pendingUpi) {
         state.pendingUpi?.let { request ->

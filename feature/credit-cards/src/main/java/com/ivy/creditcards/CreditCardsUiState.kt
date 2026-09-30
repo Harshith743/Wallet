@@ -21,6 +21,7 @@ data class CreditCardsUiState(
     val paySheet: PaySheetUi?,
     val deleteConfirmCardId: AccountId?,
     val pendingUpi: UpiPaymentRequest?,
+    val reorderVisible: Boolean,
     val loading: Boolean,
 )
 
@@ -49,14 +50,21 @@ sealed interface CreditCardsUiEvent {
     data class CloseReveal(val id: AccountId?) : CreditCardsUiEvent
     data class PayNowClick(val id: AccountId) : CreditCardsUiEvent
     data class MarkAsPaidClick(val id: AccountId) : CreditCardsUiEvent
-    data class PaySheetAmountChange(val text: String) : CreditCardsUiEvent
-    data class PaySheetAccountSelect(val id: AccountId) : CreditCardsUiEvent
-    data class PaySheetNoteChange(val note: String) : CreditCardsUiEvent
-    data object PaySheetConfirm : CreditCardsUiEvent
-    data object PaySheetDismiss : CreditCardsUiEvent
+
+    /** Events of the open pay sheet. */
+    sealed interface PaySheetEvent : CreditCardsUiEvent
+    data class PaySheetAmountChange(val text: String) : PaySheetEvent
+    data class PaySheetAccountSelect(val id: AccountId) : PaySheetEvent
+    data class PaySheetNoteChange(val note: String) : PaySheetEvent
+    data object PaySheetConfirm : PaySheetEvent
+    data object PaySheetDismiss : PaySheetEvent
     data class DeleteClick(val id: AccountId) : CreditCardsUiEvent
     data object DeleteConfirm : CreditCardsUiEvent
     data object DeleteDismiss : CreditCardsUiEvent
     data object UpiLaunched : CreditCardsUiEvent
+    data class ReorderModalVisible(val visible: Boolean) : CreditCardsUiEvent
+
+    /** The cards in their new order (every current card id, once). */
+    data class Reorder(val orderedIds: List<AccountId>) : CreditCardsUiEvent
     data object Refresh : CreditCardsUiEvent
 }

@@ -61,6 +61,7 @@ class CreditCardsViewModel @Inject constructor(
     private var paySheet by mutableStateOf<PaySheetUi?>(null)
     private var deleteConfirmCardId by mutableStateOf<AccountId?>(null)
     private var pendingUpi by mutableStateOf<UpiPaymentRequest?>(null)
+    private var reorderVisible by mutableStateOf(false)
     private var loading by mutableStateOf(true)
 
     init {
@@ -91,6 +92,7 @@ class CreditCardsViewModel @Inject constructor(
             paySheet = paySheet,
             deleteConfirmCardId = deleteConfirmCardId,
             pendingUpi = pendingUpi,
+            reorderVisible = reorderVisible,
             loading = loading,
         )
     }
@@ -105,17 +107,7 @@ class CreditCardsViewModel @Inject constructor(
                 is CreditCardsUiEvent.CloseReveal -> closeReveal(event.id)
                 is CreditCardsUiEvent.PayNowClick -> openPaySheet(event.id, launchUpi = true)
                 is CreditCardsUiEvent.MarkAsPaidClick -> openPaySheet(event.id, launchUpi = false)
-                is CreditCardsUiEvent.PaySheetAmountChange -> updateSheet {
-                    copy(amountText = event.text, amountError = false)
-                }
-
-                is CreditCardsUiEvent.PaySheetAccountSelect -> updateSheet {
-                    copy(selectedAccountId = event.id, accountError = false)
-                }
-
-                is CreditCardsUiEvent.PaySheetNoteChange -> updateSheet { copy(note = event.note) }
-                CreditCardsUiEvent.PaySheetConfirm -> confirmPayment()
-                CreditCardsUiEvent.PaySheetDismiss -> paySheet = null
+                is CreditCardsUiEvent.PaySheetEvent -> onPaySheetEvent(event)
                 is CreditCardsUiEvent.DeleteClick -> {
                     revealedCardId = null
                     deleteConfirmCardId = event.id
@@ -124,8 +116,26 @@ class CreditCardsViewModel @Inject constructor(
                 CreditCardsUiEvent.DeleteConfirm -> confirmDelete()
                 CreditCardsUiEvent.DeleteDismiss -> deleteConfirmCardId = null
                 CreditCardsUiEvent.UpiLaunched -> pendingUpi = null
+                is CreditCardsUiEvent.ReorderModalVisible -> reorderVisible = event.visible
+                is CreditCardsUiEvent.Reorder -> reorder(event.orderedIds)
                 CreditCardsUiEvent.Refresh -> load()
             }
+        }
+    }
+
+    private suspend fun onPaySheetEvent(event: CreditCardsUiEvent.PaySheetEvent) {
+        when (event) {
+            is CreditCardsUiEvent.PaySheetAmountChange -> updateSheet {
+                copy(amountText = event.text, amountError = false)
+            }
+
+            is CreditCardsUiEvent.PaySheetAccountSelect -> updateSheet {
+                copy(selectedAccountId = event.id, accountError = false)
+            }
+
+            is CreditCardsUiEvent.PaySheetNoteChange -> updateSheet { copy(note = event.note) }
+            CreditCardsUiEvent.PaySheetConfirm -> confirmPayment()
+            CreditCardsUiEvent.PaySheetDismiss -> paySheet = null
         }
     }
 
@@ -208,6 +218,23 @@ class CreditCardsViewModel @Inject constructor(
             }
         }
         paySheet = null
+        load()
+    }
+
+    /**
+     * Cards keep their relative order after every bank account (so account pickers list
+     * them last): orderNum = (max bank orderNum + 1) + position.
+     */
+    private suspend fun reorder(orderedIds: List<AccountId>) {
+        reorderVisible = false
+        val accounts = accountRepository.findAll()
+        val cardIds = orderedIds.toSet()
+        val base = accounts.filter { it.id !in cardIds }.maxOfOrNull { it.orderNum }?.plus(1) ?: 0.0
+        val byId = accounts.associateBy { it.id }
+        val reordered = orderedIds.mapIndexedNotNull { index, id ->
+            byId[id]?.copy(orderNum = base + index)
+        }
+        if (reordered.isNotEmpty()) accountRepository.saveMany(reordered)
         load()
     }
 

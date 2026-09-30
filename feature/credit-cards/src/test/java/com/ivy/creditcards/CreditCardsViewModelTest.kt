@@ -200,6 +200,42 @@ class CreditCardsViewModelTest : ComposeViewModelTest() {
         coVerify { deleteCreditCardUseCase.delete(firstId) }
     }
 
+    @Test
+    fun `reorder saves the cards after the bank accounts in the new order`() {
+        val second = Arb.account(accountId = Some(secondId), asset = Some(inr), orderNum = Some(1.0)).next()
+        val first = Arb.account(accountId = Some(firstId), asset = Some(inr), orderNum = Some(2.0)).next()
+        coEvery { accountRepository.findAll() } returns listOf(bank.copy(orderNum = 5.0), first, second)
+        coEvery { accountRepository.saveMany(any()) } returns Unit
+
+        viewModel.runTest(
+            events = listOf(
+                CreditCardsUiEvent.ReorderModalVisible(visible = true),
+                CreditCardsUiEvent.Reorder(listOf(secondId, firstId)),
+            )
+        ) {
+            reorderVisible shouldBe false
+        }
+        coVerify {
+            accountRepository.saveMany(
+                listOf(second.copy(orderNum = 6.0), first.copy(orderNum = 7.0))
+            )
+        }
+    }
+
+    @Test
+    fun `reorder ignores ids that are not accounts and starts at zero without bank accounts`() {
+        val first = Arb.account(accountId = Some(firstId), asset = Some(inr), orderNum = Some(9.0)).next()
+        coEvery { accountRepository.findAll() } returns listOf(first)
+        coEvery { accountRepository.saveMany(any()) } returns Unit
+
+        viewModel.runTest(
+            events = listOf(CreditCardsUiEvent.Reorder(listOf(AccountId(UUID.randomUUID()), firstId)))
+        ) {
+            reorderVisible shouldBe false
+        }
+        coVerify { accountRepository.saveMany(listOf(first.copy(orderNum = 1.0))) }
+    }
+
     private fun card(id: AccountId, due: Double, repaymentAccount: AccountId? = null): CreditCardWithStatement {
         val card = Arb.creditCard(
             id = Some(id),

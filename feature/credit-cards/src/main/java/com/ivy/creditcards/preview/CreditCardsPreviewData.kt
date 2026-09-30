@@ -104,6 +104,7 @@ object CreditCardsPreviewData {
         paySheet = null,
         deleteConfirmCardId = null,
         pendingUpi = null,
+        reorderVisible = false,
         loading = false,
     )
 

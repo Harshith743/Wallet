@@ -146,10 +146,16 @@ private fun BoxWithConstraintsScope.UI(
         stickyHeader {
             AccountsHeaderToolbar(
                 segment = segment,
-                showReorder = segment == AccountsSegment.ACCOUNTS,
+                showReorder = segment == AccountsSegment.ACCOUNTS || creditCardsState.cards.size > 1,
                 dueCardsCount = creditCardsState.dueCardsCount,
                 onSegmentSelect = { onEvent(AccountsEvent.OnSegmentSelected(it)) },
-                onReorderClick = { onEvent(AccountsEvent.OnReorderModalVisible(reorderVisible = true)) },
+                onReorderClick = {
+                    if (segment == AccountsSegment.ACCOUNTS) {
+                        onEvent(AccountsEvent.OnReorderModalVisible(reorderVisible = true))
+                    } else {
+                        onCreditCardsEvent(CreditCardsUiEvent.ReorderModalVisible(visible = true))
+                    }
+                },
                 onSettingsClick = { nav.navigateTo(SettingsScreen) },
             )
         }
