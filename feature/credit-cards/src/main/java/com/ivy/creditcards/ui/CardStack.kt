@@ -9,20 +9,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -36,11 +35,17 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
 object CardStackDefaults {
+    /** How much of each card behind the front one stays visible. */
     val PeekHeight: Dp = 72.dp
 
     /** Air between a card and the "View details" pill on either side of it. */
     val Gap: Dp = 12.dp
-    const val InactiveAlpha = 0.92f
+
+    /** Cards behind the front one are inset by this much per level, so they read as tucked in. */
+    val StackInset: Dp = 6.dp
+
+    /** Dim applied to the cards behind the front one. */
+    const val BehindScrimAlpha = 0.25f
 }
 
 private val PillBorder: Dp = 1.dp
@@ -142,46 +147,38 @@ private fun ExpandedList(
 }
 
 /**
- * Every inactive card is cropped to its top band (issuer, due amount, status); the last
- * one gets two bands so the stack reads as cards tucked behind each other. Bands are
- * tap-only: a 72 dp crop cannot host the quick-action grid.
+ * The inactive cards tucked behind each other, CRED style: every card is drawn at full size,
+ * each one pushed down by [CardStackDefaults.PeekHeight] and drawn over the previous, so the
+ * cards behind show only their top band and continue behind the next (no cut corners), and
+ * the front card is complete. Cards behind are slightly narrower and dimmed. Tap selects.
  */
 @Composable
 private fun StackedPeek(
     cards: ImmutableList<CreditCardUi>,
     onSelect: (AccountId) -> Unit,
 ) {
-    Column {
+    val shape = RoundedCornerShape(CreditCardFaceDefaults.CornerRadius)
+    Box(modifier = Modifier.fillMaxWidth()) {
         cards.forEachIndexed { index, card ->
-            val bands = if (index == cards.lastIndex) 2 else 1
-            PeekBand(
-                card = card,
-                height = CardStackDefaults.PeekHeight * bands,
-                onClick = { onSelect(card.id) },
-            )
+            val depth = cards.lastIndex - index
+            key(card.id) {
+                CreditCardFace(
+                    card = card,
+                    modifier = Modifier
+                        .padding(
+                            top = CardStackDefaults.PeekHeight * index,
+                            start = CardStackDefaults.StackInset * depth,
+                            end = CardStackDefaults.StackInset * depth,
+                        )
+                        .clip(shape)
+                        .drawWithContent {
+                            drawContent()
+                            if (depth > 0) drawRect(Color.Black.copy(alpha = CardStackDefaults.BehindScrimAlpha))
+                        }
+                        .clickable { onSelect(card.id) },
+                )
+            }
         }
-    }
-}
-
-@Composable
-private fun PeekBand(
-    card: CreditCardUi,
-    height: Dp,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
-            .clipToBounds()
-            .alpha(CardStackDefaults.InactiveAlpha)
-            .clickable(onClick = onClick),
-    ) {
-        // Unbounded height so the face keeps its real size and only the top shows
-        CreditCardFace(
-            card = card,
-            modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true),
-        )
     }
 }
 
