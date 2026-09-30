@@ -1,20 +1,24 @@
 package com.ivy.creditcards.details
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -24,18 +28,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ivy.creditcards.DeleteCardDialog
 import com.ivy.creditcards.model.CreditCardUi
 import com.ivy.creditcards.model.PaymentUi
 import com.ivy.creditcards.ui.CardFaceSecrets
 import com.ivy.creditcards.ui.CreditCardFace
 import com.ivy.creditcards.ui.PaymentRow
+import com.ivy.creditcards.ui.isOverdue
 import com.ivy.creditcards.ui.text
 import com.ivy.navigation.CreditCardDetailsScreen
 import com.ivy.navigation.CreditCardPaymentsScreen
@@ -98,7 +106,14 @@ fun CreditCardDetailsUi(
                     onToggleReveal = { onEvent(CreditCardDetailsUiEvent.ToggleReveal) },
                 )
             }
-            item { StatementCard(state = state) }
+            item { StatementHero(card = card, state = state) }
+            item { StatTiles(state = state) }
+            item {
+                MoreDetails(
+                    state = state,
+                    onToggle = { onEvent(CreditCardDetailsUiEvent.ToggleMoreDetails) },
+                )
+            }
             item {
                 RepaymentsSection(
                     payments = state.payments,
@@ -160,24 +175,113 @@ private fun SecretsFace(
     }
 }
 
+private val LimitBarHeight = 6.dp
+private const val LimitTrackAlpha = 0.1f
+private const val ChevronDownDegrees = 180f
+
+/** Status, the due amount and its date, then how much of the limit is in use. */
 @Composable
-private fun StatementCard(
+private fun StatementHero(
+    card: CreditCardUi,
     state: CreditCardDetailsUiState,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.card?.let { Text(text = it.statement.text(), style = MaterialTheme.typography.titleMedium) }
-            InfoRow(label = R.string.current_due, value = state.dueText)
-            InfoRow(label = R.string.unbilled, value = state.unbilledText)
-            InfoRow(label = R.string.total_outstanding, value = state.outstandingText)
-            InfoRow(label = R.string.available_limit, value = state.availableText)
-            InfoRow(label = R.string.credit_limit, value = state.limitText)
-            InfoRow(label = R.string.statement_date, value = state.statementDateText)
-            InfoRow(label = R.string.due_date, value = state.dueDateText)
-            InfoRow(label = R.string.next_statement_date, value = state.nextStatementDateText)
-            state.lastPaidOnText?.let { InfoRow(label = R.string.last_paid_on, value = it) }
-            state.repaymentAccountName?.let { InfoRow(label = R.string.repayment_account, value = it) }
-            state.card?.payeeVpa?.let { InfoRow(label = R.string.upi_payee_id, value = it) }
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = card.statement.text().uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                letterSpacing = 1.sp,
+                color = if (card.statement.isOverdue()) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(text = state.dueText, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(
+                text = stringResource(R.string.current_due),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.available_of_limit, state.availableText, state.limitText),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(LimitBarHeight)
+                    .clip(RoundedCornerShape(LimitBarHeight)),
+                progress = { state.usedFraction },
+                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = LimitTrackAlpha),
+            )
+        }
+    }
+}
+
+/** The four figures worth a glance, as a 2 x 2 grid of tiles. */
+@Composable
+private fun StatTiles(
+    state: CreditCardDetailsUiState,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile(label = R.string.unbilled, value = state.unbilledText)
+            StatTile(label = R.string.total_outstanding, value = state.outstandingText)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile(label = R.string.statement_date, value = state.statementDateText)
+            StatTile(label = R.string.next_statement_date, value = state.nextStatementDateText)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.StatTile(
+    label: Int,
+    value: String,
+) {
+    Card(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = stringResource(label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+/** The rest of the figures behind a "More details" disclosure, collapsed by default. */
+@Composable
+private fun MoreDetails(
+    state: CreditCardDetailsUiState,
+    onToggle: () -> Unit,
+) {
+    Column {
+        TextButton(onClick = onToggle) {
+            Text(stringResource(if (state.moreDetailsExpanded) R.string.less_details else R.string.more_details))
+            Icon(
+                modifier = Modifier.rotate(if (state.moreDetailsExpanded) ChevronDownDegrees else 0f),
+                painter = painterResource(R.drawable.ic_expand_more),
+                contentDescription = null,
+            )
+        }
+        AnimatedVisibility(visible = state.moreDetailsExpanded) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoRow(label = R.string.credit_limit, value = state.limitText)
+                    InfoRow(label = R.string.due_date, value = state.dueDateText)
+                    state.lastPaidOnText?.let { InfoRow(label = R.string.last_paid_on, value = it) }
+                    state.repaymentAccountName?.let { InfoRow(label = R.string.repayment_account_short, value = it) }
+                    state.card?.payeeVpa?.let { InfoRow(label = R.string.upi_id_short, value = it) }
+                }
+            }
         }
     }
 }

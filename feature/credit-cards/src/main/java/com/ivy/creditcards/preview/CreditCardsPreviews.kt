@@ -87,10 +87,10 @@ fun CreditCardPaymentsUiTest(dark: Boolean, empty: Boolean) {
 
 /** For screenshot testing. */
 @Composable
-fun CreditCardDetailsUiTest(dark: Boolean, revealed: Boolean) {
+fun CreditCardDetailsUiTest(dark: Boolean, revealed: Boolean, moreExpanded: Boolean = false) {
     IvyPreview(dark = dark) {
         CreditCardDetailsUi(
-            state = CreditCardsPreviewData.detailsState(revealed = revealed),
+            state = CreditCardsPreviewData.detailsState(revealed = revealed, moreExpanded = moreExpanded),
             onEvent = {},
         )
     }

@@ -171,6 +171,7 @@ object CreditCardsPreviewData {
 
     fun detailsState(
         revealed: Boolean = false,
+        moreExpanded: Boolean = false,
     ): CreditCardDetailsUiState = CreditCardDetailsUiState(
         card = hdfc,
         revealed = revealed,
@@ -189,6 +190,8 @@ object CreditCardsPreviewData {
         lastPaidOnText = "8 Sep 2026",
         repaymentAccountName = "HDFC Savings",
         payments = payments,
+        usedFraction = 0.157f,
+        moreDetailsExpanded = moreExpanded,
         deleteDialogVisible = false,
         loading = false,
     )

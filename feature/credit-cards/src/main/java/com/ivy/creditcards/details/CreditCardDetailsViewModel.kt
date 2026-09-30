@@ -3,6 +3,7 @@ package com.ivy.creditcards.details
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
@@ -24,6 +25,10 @@ import com.ivy.domain.usecase.creditcard.DeleteCreditCardUseCase
 import com.ivy.navigation.Navigation
 import com.ivy.ui.ComposeViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -31,10 +36,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import javax.inject.Inject
 
 private const val RevealTimeoutMs = 30_000L
 private const val PanGroupSize = 4
@@ -76,6 +77,8 @@ class CreditCardDetailsViewModel @Inject constructor(
     private var lastPaidOnText by mutableStateOf<String?>(null)
     private var repaymentAccountName by mutableStateOf<String?>(null)
     private var payments by mutableStateOf<ImmutableList<PaymentUi>>(persistentListOf())
+    private var usedFraction by mutableFloatStateOf(0f)
+    private var moreDetailsExpanded by mutableStateOf(false)
     private var deleteDialogVisible by mutableStateOf(false)
     private var loading by mutableStateOf(true)
 
@@ -108,6 +111,8 @@ class CreditCardDetailsViewModel @Inject constructor(
         lastPaidOnText = lastPaidOnText,
         repaymentAccountName = repaymentAccountName,
         payments = payments,
+        usedFraction = usedFraction,
+        moreDetailsExpanded = moreDetailsExpanded,
         deleteDialogVisible = deleteDialogVisible,
         loading = loading,
     )
@@ -120,6 +125,7 @@ class CreditCardDetailsViewModel @Inject constructor(
                 CreditCardDetailsUiEvent.DeleteClick -> deleteDialogVisible = true
                 CreditCardDetailsUiEvent.DeleteConfirm -> delete()
                 CreditCardDetailsUiEvent.DeleteDismiss -> deleteDialogVisible = false
+                CreditCardDetailsUiEvent.ToggleMoreDetails -> moreDetailsExpanded = !moreDetailsExpanded
             }
         }
     }
@@ -140,6 +146,7 @@ class CreditCardDetailsViewModel @Inject constructor(
         outstandingText = formatWithSymbol(item.statement.outstanding, currency)
         availableText = formatWithSymbol(item.statement.availableLimit, currency)
         limitText = formatWithSymbol(item.card.creditLimit.value, currency)
+        usedFraction = (item.statement.outstanding / item.card.creditLimit.value).toFloat().coerceIn(0f, 1f)
         statementDateText = item.statement.dates.lastStatementDate.text()
         dueDateText = item.statement.dates.dueDate.text()
         nextStatementDateText = item.statement.dates.nextStatementDate.text()

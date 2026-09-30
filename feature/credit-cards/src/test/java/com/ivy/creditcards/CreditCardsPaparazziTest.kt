@@ -82,4 +82,9 @@ class CreditCardsPaparazziTest(
     fun `snapshot details revealed`() {
         snapshot(theme) { CreditCardDetailsUiTest(dark = dark, revealed = true) }
     }
+
+    @Test
+    fun `snapshot details more`() {
+        snapshot(theme) { CreditCardDetailsUiTest(dark = dark, revealed = false, moreExpanded = true) }
+    }
 }

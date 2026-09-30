@@ -27,6 +27,9 @@ data class CreditCardDetailsUiState(
     val lastPaidOnText: String?,
     val repaymentAccountName: String?,
     val payments: ImmutableList<PaymentUi>,
+    /** Outstanding / credit limit, 0..1, for the limit bar. */
+    val usedFraction: Float,
+    val moreDetailsExpanded: Boolean,
     val deleteDialogVisible: Boolean,
     val loading: Boolean,
 )
@@ -37,4 +40,5 @@ sealed interface CreditCardDetailsUiEvent {
     data object DeleteClick : CreditCardDetailsUiEvent
     data object DeleteConfirm : CreditCardDetailsUiEvent
     data object DeleteDismiss : CreditCardDetailsUiEvent
+    data object ToggleMoreDetails : CreditCardDetailsUiEvent
 }
