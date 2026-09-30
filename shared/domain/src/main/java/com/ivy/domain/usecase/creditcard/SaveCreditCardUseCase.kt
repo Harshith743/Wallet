@@ -13,7 +13,6 @@ import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.CardSecrets
-import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.CreditCard
 import com.ivy.data.model.Expense
 import com.ivy.data.model.PositiveValue
@@ -114,7 +113,7 @@ class SaveCreditCardUseCase @Inject constructor(
             repaymentAccountId = draft.repaymentAccountId,
             payeeVpa = draft.payeeVpa?.let(NotBlankTrimmedString::from)?.getOrNull(),
             tier = identity.tier?.let(NotBlankTrimmedString::from)?.getOrNull(),
-            skin = existing?.card?.skin ?: CardSkinMode.AUTO,
+            skin = draft.skin,
         )
 
         creditCardRepository.save(card)

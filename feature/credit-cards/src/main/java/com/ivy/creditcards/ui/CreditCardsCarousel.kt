@@ -31,12 +31,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivy.creditcards.model.CreditCardUi
+import com.ivy.creditcards.skin.brush
 import com.ivy.data.model.AccountId
 import com.ivy.design.l0_system.UI
 import com.ivy.design.l0_system.style
 import com.ivy.ui.R
 import com.ivy.wallet.ui.theme.components.IvyOutlinedButton
-import com.ivy.wallet.ui.theme.findContrastTextColor
 import com.ivy.wallet.ui.theme.pureBlur
 import kotlinx.collections.immutable.ImmutableList
 
@@ -121,12 +121,12 @@ fun CardThumbnail(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(8.dp)
-    val contrast = findContrastTextColor(card.color)
+    val contrast = card.skin.textColor
     Box(
         modifier = modifier
             .size(width = CarouselDefaults.ThumbnailWidth, height = CarouselDefaults.ThumbnailHeight)
             .clip(shape)
-            .background(card.color)
+            .background(card.skin.brush())
             .border(2.dp, if (selected) UI.colors.pureInverse else Color.Transparent, shape)
             .clickable(onClick = onClick),
     ) {
@@ -137,7 +137,7 @@ fun CardThumbnail(
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = card.issuer.uppercase(),
+                text = card.skin.wordmark ?: card.issuer.uppercase(),
                 style = TextStyle(fontSize = 8.sp, fontWeight = FontWeight.Bold, color = contrast),
                 maxLines = 1,
             )

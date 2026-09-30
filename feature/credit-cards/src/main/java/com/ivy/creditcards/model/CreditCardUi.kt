@@ -4,6 +4,7 @@ package com.ivy.creditcards.model
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import com.ivy.creditcards.skin.CardSkinUi
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
 
@@ -27,6 +28,8 @@ data class CreditCardUi(
     val statement: StatementLabel,
     val repaymentAccountId: AccountId?,
     val payeeVpa: String?,
+    val tier: String?,
+    val skin: CardSkinUi,
 )
 
 @Immutable

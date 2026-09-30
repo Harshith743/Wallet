@@ -78,13 +78,7 @@ fun EditCreditCardUi(
             if (!state.isEdit) {
                 item { OpeningBalanceSection(state = state, onEvent = onEvent) }
             }
-            item {
-                ColorSwatchRow(
-                    palette = state.palette,
-                    selected = state.color,
-                    onSelect = { onEvent(EditCreditCardUiEvent.ColorSelect(it)) },
-                )
-            }
+            item { DesignSection(state = state, onEvent = onEvent) }
             item { RepaymentAccountSection(state = state, onEvent = onEvent) }
             item { PayeeVpaField(state = state, onEvent = onEvent) }
             item { Actions(state = state, onEvent = onEvent) }

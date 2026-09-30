@@ -2,6 +2,7 @@ package com.ivy.domain.usecase.creditcard
 
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.primitive.ColorInt
 import com.ivy.data.repository.CardSecretsError
 
@@ -13,6 +14,7 @@ import com.ivy.data.repository.CardSecretsError
  * re-entering the number, in which case the existing last 4, BIN and secrets are kept.
  * @property openingDue amount already billed when the card is first added (create only).
  * @property openingUnbilled amount spent but not yet billed when first added (create only).
+ * @property skin how the card face is painted.
  */
 @Suppress("DataClassTypedIDs") // the rule does not recognise nullable typed ids
 data class CreditCardDraft(
@@ -32,6 +34,7 @@ data class CreditCardDraft(
     val payeeVpa: String?,
     val openingDue: Double,
     val openingUnbilled: Double,
+    val skin: CardSkinMode,
 )
 
 sealed interface CreditCardError {

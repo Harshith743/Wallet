@@ -11,8 +11,10 @@ import com.ivy.creditcards.edit.FieldError
 import com.ivy.creditcards.model.AccountChipUi
 import com.ivy.creditcards.model.CreditCardUi
 import com.ivy.creditcards.model.StatementLabel
+import com.ivy.creditcards.skin.CardSkinCatalog
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.TransactionId
 import com.ivy.design.IVY_COLOR_PICKER_COLORS_FREE
 import kotlinx.collections.immutable.ImmutableList
@@ -45,6 +47,8 @@ object CreditCardsPreviewData {
         statement = StatementLabel.DueOn("11 Oct"),
         repaymentAccountId = bankId,
         payeeVpa = "hdfccard@upi",
+        tier = "Platinum",
+        skin = CardSkinCatalog.resolve("HDFC Bank", "HDFC Pixel Go", CardNetwork.VISA, "Platinum", Color(0xFF2B2C2D)),
     )
 
     val slice = CreditCardUi(
@@ -62,6 +66,8 @@ object CreditCardsPreviewData {
         statement = StatementLabel.DueInDays(6),
         repaymentAccountId = null,
         payeeVpa = null,
+        tier = null,
+        skin = CardSkinCatalog.resolve("Slice", "Slice", CardNetwork.RUPAY, null, Color(0xFFA020F0)),
     )
 
     val oneCard = CreditCardUi(
@@ -79,6 +85,8 @@ object CreditCardsPreviewData {
         statement = StatementLabel.Awaited,
         repaymentAccountId = null,
         payeeVpa = null,
+        tier = "Metal",
+        skin = CardSkinCatalog.resolve("Federal Bank", "OneCard", CardNetwork.VISA, "Metal", Color(0xFF111114)),
     )
 
     val cards: ImmutableList<CreditCardUi> = persistentListOf(hdfc, slice, oneCard)
@@ -111,6 +119,7 @@ object CreditCardsPreviewData {
     fun editState(
         isEdit: Boolean = false,
         withErrors: Boolean = false,
+        colourDesign: Boolean = false,
     ): EditCreditCardUiState = EditCreditCardUiState(
         isEdit = isEdit,
         last4 = if (isEdit) "6304" else null,
@@ -132,6 +141,14 @@ object CreditCardsPreviewData {
         openingUnbilled = "",
         color = IVY_COLOR_PICKER_COLORS_FREE.first(),
         palette = IVY_COLOR_PICKER_COLORS_FREE.toImmutableList(),
+        skinMode = if (colourDesign) CardSkinMode.COLOR else CardSkinMode.AUTO,
+        skinPreview = CardSkinCatalog.resolve(
+            issuer = "HDFC Bank",
+            cardName = "HDFC Pixel Go",
+            network = CardNetwork.VISA,
+            tier = "Platinum",
+            fallback = IVY_COLOR_PICKER_COLORS_FREE.first(),
+        ),
         accounts = accounts,
         repaymentAccountId = bankId,
         payeeVpa = "hdfccard@upi",

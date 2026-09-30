@@ -3,6 +3,7 @@ package com.ivy.creditcards.edit
 import arrow.core.Either
 import com.ivy.base.TestDispatchersProvider
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.repository.AccountRepository
 import com.ivy.domain.creditcard.BinLookup
 import com.ivy.domain.creditcard.BinRecord
@@ -102,6 +103,22 @@ class EditCreditCardViewModelTest : ComposeViewModelTest() {
         ) {
             detectedIssuer shouldBe "American Express"
             detectedTier shouldBe null
+        }
+    }
+
+    @Test
+    fun `design defaults to the bank theme and the preview follows the typed issuer`() {
+        viewModel.runTest(
+            events = listOf(
+                EditCreditCardUiEvent.Load(null),
+                EditCreditCardUiEvent.FieldChange(CardField.ISSUER, "HDFC Bank"),
+            )
+        ) {
+            skinMode shouldBe CardSkinMode.AUTO
+            skinPreview.wordmark shouldBe "HDFC BANK"
+        }
+        viewModel.runTest(events = listOf(EditCreditCardUiEvent.SkinModeSelect(CardSkinMode.COLOR))) {
+            skinMode shouldBe CardSkinMode.COLOR
         }
     }
 

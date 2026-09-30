@@ -1,5 +1,6 @@
 package com.ivy.creditcards.model
 
+import com.ivy.creditcards.skin.CardSkinResolver
 import com.ivy.domain.model.CreditCardWithStatement
 import com.ivy.wallet.ui.theme.toComposeColor
 import javax.inject.Inject
@@ -10,6 +11,7 @@ import javax.inject.Inject
  */
 class CreditCardUiMapper @Inject constructor(
     private val statementLabelMapper: StatementLabelMapper,
+    private val skinResolver: CardSkinResolver,
 ) {
     fun map(item: CreditCardWithStatement, currency: String): CreditCardUi = CreditCardUi(
         id = item.card.id,
@@ -26,5 +28,14 @@ class CreditCardUiMapper @Inject constructor(
         statement = statementLabelMapper.map(item.statement.status),
         repaymentAccountId = item.card.repaymentAccountId,
         payeeVpa = item.card.payeeVpa?.value,
+        tier = item.card.tier?.value,
+        skin = skinResolver.resolve(
+            mode = item.card.skin,
+            issuer = item.card.issuer?.value,
+            cardName = item.account.name.value,
+            network = item.card.network,
+            tier = item.card.tier?.value,
+            color = item.account.color.value.toComposeColor(),
+        ),
     )
 }

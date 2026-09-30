@@ -9,8 +9,10 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.viewModelScope
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.creditcards.model.AccountChipUi
+import com.ivy.creditcards.skin.CardSkinCatalog
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.primitive.ColorInt
 import com.ivy.data.repository.AccountRepository
 import com.ivy.design.IVY_COLOR_PICKER_COLORS_FREE
@@ -67,6 +69,7 @@ class EditCreditCardViewModel @Inject constructor(
     private var existing: CreditCardWithAccount? = null
     private var currency = ""
     private var previousDetectedIssuer: String? = null
+    private var existingTier: String? = null
 
     private var isEdit by mutableStateOf(false)
     private var last4 by mutableStateOf<String?>(null)
@@ -87,6 +90,7 @@ class EditCreditCardViewModel @Inject constructor(
     private var openingDue by mutableStateOf("")
     private var openingUnbilled by mutableStateOf("")
     private var color by mutableStateOf(IVY_COLOR_PICKER_COLORS_FREE.first())
+    private var skinMode by mutableStateOf(CardSkinMode.AUTO)
     private var accounts by mutableStateOf<ImmutableList<AccountChipUi>>(persistentListOf())
     private var repaymentAccountId by mutableStateOf<AccountId?>(null)
     private var payeeVpa by mutableStateOf("")
@@ -117,6 +121,14 @@ class EditCreditCardViewModel @Inject constructor(
         openingUnbilled = openingUnbilled,
         color = color,
         palette = IVY_COLOR_PICKER_COLORS_FREE.toImmutableList(),
+        skinMode = skinMode,
+        skinPreview = CardSkinCatalog.resolve(
+            issuer = issuer.ifBlank { detectedIssuer.orEmpty() },
+            cardName = cardName,
+            network = networkOverride ?: detectedNetwork,
+            tier = detectedTier ?: existingTier,
+            fallback = color,
+        ),
         accounts = accounts,
         repaymentAccountId = repaymentAccountId,
         payeeVpa = payeeVpa,
@@ -133,6 +145,7 @@ class EditCreditCardViewModel @Inject constructor(
                 is EditCreditCardUiEvent.FieldChange -> fieldChange(event.field, event.value)
                 is EditCreditCardUiEvent.NetworkOverride -> networkOverride = event.network
                 is EditCreditCardUiEvent.ColorSelect -> color = event.color
+                is EditCreditCardUiEvent.SkinModeSelect -> skinMode = event.mode
                 is EditCreditCardUiEvent.RepaymentAccountSelect -> repaymentAccountId = event.id
                 EditCreditCardUiEvent.ReenterNumber -> numberEntryVisible = true
                 EditCreditCardUiEvent.Save -> save()
@@ -165,6 +178,8 @@ class EditCreditCardViewModel @Inject constructor(
             statementDay = loaded.card.billingDay.value.toString()
             dueDay = loaded.card.dueDay.value.toString()
             color = loaded.account.color.value.toComposeColor()
+            skinMode = if (loaded.card.skin == CardSkinMode.COLOR) CardSkinMode.COLOR else CardSkinMode.AUTO
+            existingTier = loaded.card.tier?.value
             repaymentAccountId = loaded.card.repaymentAccountId
             payeeVpa = loaded.card.payeeVpa?.value.orEmpty()
         }
@@ -224,6 +239,7 @@ class EditCreditCardViewModel @Inject constructor(
             payeeVpa = payeeVpa.takeIf { it.isNotBlank() },
             openingDue = openingDue.amountToDoubleOrNull() ?: 0.0,
             openingUnbilled = openingUnbilled.amountToDoubleOrNull() ?: 0.0,
+            skin = skinMode,
         )
         saveCreditCardUseCase.save(draft, existing).fold(
             ifLeft = { error ->

@@ -55,6 +55,11 @@ class CreditCardsPaparazziTest(
     }
 
     @Test
+    fun `snapshot edit design colour`() {
+        snapshot(theme) { EditCreditCardUiTest(dark = dark, isEdit = false, colourDesign = true) }
+    }
+
+    @Test
     fun `snapshot edit existing`() {
         snapshot(theme) { EditCreditCardUiTest(dark = dark, isEdit = true) }
     }

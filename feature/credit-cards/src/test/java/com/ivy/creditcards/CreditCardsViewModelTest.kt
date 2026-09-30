@@ -6,6 +6,7 @@ import com.ivy.base.TestDispatchersProvider
 import com.ivy.creditcards.model.CreditCardUiMapper
 import com.ivy.creditcards.model.StatementLabelMapper
 import com.ivy.creditcards.session.AccountsSegmentSession
+import com.ivy.creditcards.skin.CardSkinResolver
 import com.ivy.data.DataObserver
 import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
@@ -73,7 +74,7 @@ class CreditCardsViewModelTest : ComposeViewModelTest() {
             deleteCreditCardUseCase = deleteCreditCardUseCase,
             accountRepository = accountRepository,
             currencyRepository = currencyRepository,
-            uiMapper = CreditCardUiMapper(StatementLabelMapper()),
+            uiMapper = CreditCardUiMapper(StatementLabelMapper(), CardSkinResolver()),
             session = session,
             dataObserver = DataObserver(),
             dispatchers = TestDispatchersProvider,

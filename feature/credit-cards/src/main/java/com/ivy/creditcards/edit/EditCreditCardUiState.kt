@@ -5,8 +5,10 @@ package com.ivy.creditcards.edit
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import com.ivy.creditcards.model.AccountChipUi
+import com.ivy.creditcards.skin.CardSkinUi
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import java.util.UUID
@@ -59,6 +61,9 @@ data class EditCreditCardUiState(
     val openingUnbilled: String,
     val color: Color,
     val palette: ImmutableList<Color>,
+    /** AUTO (bank theme) or COLOR (the swatch); the preview shows what AUTO would paint. */
+    val skinMode: CardSkinMode,
+    val skinPreview: CardSkinUi,
     val accounts: ImmutableList<AccountChipUi>,
     val repaymentAccountId: AccountId?,
     val payeeVpa: String,
@@ -76,6 +81,7 @@ sealed interface EditCreditCardUiEvent {
     data class FieldChange(val field: CardField, val value: String) : EditCreditCardUiEvent
     data class NetworkOverride(val network: CardNetwork?) : EditCreditCardUiEvent
     data class ColorSelect(val color: Color) : EditCreditCardUiEvent
+    data class SkinModeSelect(val mode: CardSkinMode) : EditCreditCardUiEvent
     data class RepaymentAccountSelect(val id: AccountId?) : EditCreditCardUiEvent
     data object ReenterNumber : EditCreditCardUiEvent
     data object Save : EditCreditCardUiEvent

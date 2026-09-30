@@ -31,10 +31,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivy.creditcards.model.CreditCardUi
+import com.ivy.creditcards.skin.brush
 import com.ivy.data.model.CardNetwork
 import com.ivy.ui.R
 import com.ivy.wallet.ui.theme.Red
-import com.ivy.wallet.ui.theme.findContrastTextColor
 
 object CreditCardFaceDefaults {
     const val AspectRatio = 1.586f
@@ -43,11 +43,14 @@ object CreditCardFaceDefaults {
     val Padding: Dp = 20.dp
     val ChipWidth: Dp = 38.dp
     val ChipHeight: Dp = 28.dp
+    val AccentBarWidth: Dp = 28.dp
+    val AccentBarHeight: Dp = 3.dp
 }
 
 /**
- * The card face: issuer, due amount and status, chip, network and last 4 digits,
- * cardholder name, remaining limit, and an optional "Pay now" button.
+ * The card face: issuer wordmark, tier and accent, due amount and status, chip, network
+ * and last 4 digits, cardholder name, remaining limit, and an optional "Pay now" button.
+ * Painted with the card's skin (bank gradient, plain colour).
  * Theme-agnostic (explicit styles) so it renders the same in the legacy tab and M3 screens.
  */
 @Composable
@@ -57,13 +60,13 @@ fun CreditCardFace(
     showPayNow: Boolean = false,
     onPayNow: () -> Unit = {},
 ) {
-    val contrast = findContrastTextColor(card.color)
+    val contrast = card.skin.textColor
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(CreditCardFaceDefaults.AspectRatio)
             .clip(RoundedCornerShape(CreditCardFaceDefaults.CornerRadius))
-            .background(card.color)
+            .background(card.skin.brush())
     ) {
         Column(
             modifier = Modifier
@@ -85,12 +88,42 @@ private fun FaceHeader(
     contrast: Color,
 ) {
     Row(verticalAlignment = Alignment.Top) {
-        Text(
-            modifier = Modifier.weight(1f),
-            text = card.issuer.uppercase(),
-            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = contrast, letterSpacing = 1.sp),
-            maxLines = 1,
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = card.skin.wordmark ?: card.issuer.uppercase(),
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = contrast,
+                    letterSpacing = 1.sp,
+                ),
+                maxLines = 1,
+            )
+            card.tier?.let { tier ->
+                Text(
+                    text = tier.uppercase(),
+                    style = TextStyle(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = contrast.copy(alpha = CreditCardFaceDefaults.SecondaryAlpha),
+                        letterSpacing = 2.sp,
+                    ),
+                    maxLines = 1,
+                )
+            }
+            card.skin.accent?.let { accent ->
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size(
+                            width = CreditCardFaceDefaults.AccentBarWidth,
+                            height = CreditCardFaceDefaults.AccentBarHeight,
+                        )
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(accent)
+                )
+            }
+        }
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = card.dueText,

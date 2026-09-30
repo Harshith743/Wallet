@@ -181,6 +181,13 @@ class SaveCreditCardUseCaseTest {
     }
 
     @Test
+    fun `the chosen design is stored`() = runTest {
+        val result = useCase.save(validDraft().copy(skin = CardSkinMode.COLOR), existing = null).shouldBeRight()
+
+        result.card.skin shouldBe CardSkinMode.COLOR
+    }
+
+    @Test
     fun `overrides win over detection`() = runTest {
         val draft = validDraft().copy(networkOverride = CardNetwork.RUPAY, issuerOverride = "My Bank")
 
@@ -204,7 +211,7 @@ class SaveCreditCardUseCaseTest {
         result.card.bin shouldBe existingCard.bin
         result.card.network shouldBe existingCard.network
         result.card.tier shouldBe existingCard.tier
-        result.card.skin shouldBe existingCard.skin
+        result.card.skin shouldBe CardSkinMode.AUTO
         result.account.name.value shouldBe "Renamed"
         result.account.color shouldBe ColorInt(42)
         result.account.orderNum shouldBe 7.0
@@ -230,5 +237,6 @@ class SaveCreditCardUseCaseTest {
         payeeVpa = null,
         openingDue = 0.0,
         openingUnbilled = 0.0,
+        skin = CardSkinMode.AUTO,
     )
 }
