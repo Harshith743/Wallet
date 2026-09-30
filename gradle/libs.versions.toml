@@ -120,6 +120,9 @@ androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version
 # Material
 material = { module = "com.google.android.material:material", version = "1.12.0" }
 
+# Frosted glass (bottom bar); 0.7.x is the last line built for Compose 1.6
+haze = { module = "dev.chrisbanes.haze:haze", version = "0.7.3" }
+
 # Logging
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 

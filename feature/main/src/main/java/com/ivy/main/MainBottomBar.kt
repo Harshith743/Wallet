@@ -28,11 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,17 +66,21 @@ import com.ivy.wallet.ui.theme.components.IvyIcon
 import com.ivy.wallet.ui.theme.components.IvyOutlinedButton
 import com.ivy.wallet.ui.theme.gradientExpenses
 import com.ivy.wallet.ui.theme.modal.AddModalBackHandling
-import com.ivy.wallet.ui.theme.pureBlur
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 val TRN_BUTTON_CLICK_AREA_HEIGHT = 150.dp
 val FAB_BUTTON_SIZE = 56.dp
+private const val HairlineAlpha = 0.4f
+private val HairlineWidth = 1.dp
 
 @Deprecated("Old design system. Use `:ivy-design` and Material3")
 @Composable
 fun BoxWithConstraintsScope.BottomBar(
+    hazeState: HazeState,
     tab: MainTab,
     selectTab: (MainTab) -> Unit,
 
@@ -113,39 +119,12 @@ fun BoxWithConstraintsScope.BottomBar(
         targetValue = if (expanded) 1f else 0f,
         animationSpec = springBounceFast()
     )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .align(Alignment.BottomCenter)
-            .background(pureBlur())
-            .alpha(1f - buttonsShownPercent)
-            .navigationBarsPadding()
-            .clickableNoIndication(rememberInteractionSource()) {
-                // consume click
-            },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Tab(
-            icon = R.drawable.ic_home,
-            name = stringResource(R.string.home),
-            selected = tab == MainTab.HOME,
-            selectedColor = Ivy
-        ) {
-            selectTab(MainTab.HOME)
-        }
-
-        Spacer(Modifier.width(FAB_BUTTON_SIZE))
-
-        Tab(
-            icon = R.drawable.ic_accounts,
-            name = stringResource(R.string.accounts),
-            selected = tab == MainTab.ACCOUNTS,
-            selectedColor = Green
-        ) {
-            selectTab(MainTab.ACCOUNTS)
-        }
-    }
+    FrostedTabsBar(
+        hazeState = hazeState,
+        tab = tab,
+        hiddenPercent = buttonsShownPercent,
+        selectTab = selectTab,
+    )
 
     if (expandedBackgroundOffset < screenHeightDp) {
         Spacer(
@@ -607,6 +586,61 @@ private fun AddTransferButton(
                 onAddTransfer()
             }
     )
+}
+
+/**
+ * The Home | Accounts bar: a frosted-glass band (blurred, black-tinted view of the tab
+ * content behind it) with a hairline top edge; fades out while the FAB menu is open.
+ */
+@Composable
+private fun BoxWithConstraintsScope.FrostedTabsBar(
+    hazeState: HazeState,
+    tab: MainTab,
+    hiddenPercent: Float,
+    selectTab: (MainTab) -> Unit,
+) {
+    val hairline = UI.colors.medium.copy(alpha = HairlineAlpha)
+    val hairlineWidth = with(LocalDensity.current) { HairlineWidth.toPx() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .align(Alignment.BottomCenter)
+            .hazeChild(state = hazeState)
+            .drawBehind {
+                drawLine(
+                    color = hairline,
+                    start = Offset.Zero,
+                    end = Offset(size.width, 0f),
+                    strokeWidth = hairlineWidth,
+                )
+            }
+            .alpha(1f - hiddenPercent)
+            .navigationBarsPadding()
+            .clickableNoIndication(rememberInteractionSource()) {
+                // consume click
+            },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Tab(
+            icon = R.drawable.ic_home,
+            name = stringResource(R.string.home),
+            selected = tab == MainTab.HOME,
+            selectedColor = Ivy
+        ) {
+            selectTab(MainTab.HOME)
+        }
+
+        Spacer(Modifier.width(FAB_BUTTON_SIZE))
+
+        Tab(
+            icon = R.drawable.ic_accounts,
+            name = stringResource(R.string.accounts),
+            selected = tab == MainTab.ACCOUNTS,
+            selectedColor = Green
+        ) {
+            selectTab(MainTab.ACCOUNTS)
+        }
+    }
 }
 
 @Composable
