@@ -61,6 +61,7 @@ import com.ivy.legacy.utils.horizontalSwipeListener
 import com.ivy.legacy.utils.rememberInteractionSource
 import com.ivy.legacy.utils.rememberSwipeListenerState
 import com.ivy.navigation.CreditCardDetailsScreen
+import com.ivy.navigation.CreditCardPaymentsScreen
 import com.ivy.navigation.EditCreditCardScreen
 import com.ivy.navigation.SettingsScreen
 import com.ivy.navigation.TransactionsScreen
@@ -196,7 +197,7 @@ private fun BoxWithConstraintsScope.UI(
                         onRecentSpends = {
                             nav.navigateTo(TransactionsScreen(accountId = it.value, categoryId = null))
                         },
-                        onPaymentHistory = { nav.navigateTo(CreditCardDetailsScreen(cardId = it.value)) },
+                        onPaymentHistory = { nav.navigateTo(CreditCardPaymentsScreen(cardId = it.value)) },
                     ),
                 )
             }

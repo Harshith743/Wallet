@@ -12,6 +12,7 @@ import com.ivy.creditcards.CreditCardsContent
 import com.ivy.creditcards.CreditCardsNavigation
 import com.ivy.creditcards.details.CreditCardDetailsUi
 import com.ivy.creditcards.edit.EditCreditCardUi
+import com.ivy.creditcards.payments.CreditCardPaymentsUi
 import com.ivy.creditcards.ui.CreditCardsCarousel
 import com.ivy.legacy.IvyWalletPreview
 import com.ivy.navigation.IvyPreview
@@ -78,6 +79,14 @@ fun EditCreditCardUiTest(dark: Boolean, isEdit: Boolean, withErrors: Boolean = f
             state = CreditCardsPreviewData.editState(isEdit = isEdit, withErrors = withErrors),
             onEvent = {},
         )
+    }
+}
+
+/** For screenshot testing. */
+@Composable
+fun CreditCardPaymentsUiTest(dark: Boolean, empty: Boolean) {
+    IvyPreview(dark = dark) {
+        CreditCardPaymentsUi(state = CreditCardsPreviewData.paymentsState(empty = empty))
     }
 }
 

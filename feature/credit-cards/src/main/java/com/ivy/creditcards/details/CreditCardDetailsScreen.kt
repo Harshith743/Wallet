@@ -29,9 +29,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ivy.creditcards.DeleteCardDialog
+import com.ivy.creditcards.model.PaymentUi
 import com.ivy.creditcards.ui.CreditCardFace
+import com.ivy.creditcards.ui.PaymentRow
 import com.ivy.creditcards.ui.text
 import com.ivy.navigation.CreditCardDetailsScreen
+import com.ivy.navigation.CreditCardPaymentsScreen
 import com.ivy.navigation.EditCreditCardScreen
 import com.ivy.navigation.navigation
 import com.ivy.navigation.screenScopedViewModel
@@ -92,7 +95,12 @@ fun CreditCardDetailsUi(
                 )
             }
             item { StatementCard(state = state) }
-            item { RepaymentsSection(payments = state.payments) }
+            item {
+                RepaymentsSection(
+                    payments = state.payments,
+                    onViewAll = { nav.navigateTo(CreditCardPaymentsScreen(cardId = card.id.value)) },
+                )
+            }
             item {
                 OutlinedButton(
                     modifier = Modifier.fillMaxWidth(),
@@ -187,45 +195,31 @@ private fun InfoRow(
     }
 }
 
+private const val RecentPaymentsLimit = 3
+
 @Composable
 private fun RepaymentsSection(
     payments: ImmutableList<PaymentUi>,
+    onViewAll: () -> Unit,
 ) {
     Column {
-        Text(text = stringResource(R.string.repayments), style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = stringResource(R.string.repayments),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (payments.isNotEmpty()) {
+                TextButton(onClick = onViewAll) { Text(stringResource(R.string.view_all)) }
+            }
+        }
         Spacer(Modifier.height(8.dp))
         if (payments.isEmpty()) {
             Text(text = stringResource(R.string.no_payments_yet), style = MaterialTheme.typography.bodyMedium)
         }
-        payments.forEach { payment ->
+        payments.take(RecentPaymentsLimit).forEach { payment ->
             PaymentRow(payment = payment)
             Spacer(Modifier.height(8.dp))
-        }
-    }
-}
-
-@Composable
-private fun PaymentRow(
-    payment: PaymentUi,
-    modifier: Modifier = Modifier,
-) {
-    Card(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = payment.dateText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                val subtitle = listOfNotNull(payment.fromAccountName, payment.note).joinToString(" · ")
-                if (subtitle.isNotEmpty()) {
-                    Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            Text(text = payment.amountText, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
     }
 }

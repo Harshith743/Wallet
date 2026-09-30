@@ -4,7 +4,7 @@ package com.ivy.creditcards.details
 
 import androidx.compose.runtime.Immutable
 import com.ivy.creditcards.model.CreditCardUi
-import com.ivy.data.model.TransactionId
+import com.ivy.creditcards.model.PaymentUi
 import kotlinx.collections.immutable.ImmutableList
 import java.util.UUID
 
@@ -29,15 +29,6 @@ data class CreditCardDetailsUiState(
     val payments: ImmutableList<PaymentUi>,
     val deleteDialogVisible: Boolean,
     val loading: Boolean,
-)
-
-@Immutable
-data class PaymentUi(
-    val id: TransactionId,
-    val dateText: String,
-    val amountText: String,
-    val fromAccountName: String?,
-    val note: String?,
 )
 
 sealed interface CreditCardDetailsUiEvent {

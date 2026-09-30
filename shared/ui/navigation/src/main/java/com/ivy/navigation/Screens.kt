@@ -143,6 +143,9 @@ data class EditCreditCardScreen(val cardId: UUID?) : Screen
 @Suppress("DataClassTypedIDs")
 data class CreditCardDetailsScreen(val cardId: UUID) : Screen
 
+@Suppress("DataClassTypedIDs")
+data class CreditCardPaymentsScreen(val cardId: UUID) : Screen
+
 data object AttributionsScreen : Screen
 
 data object ContributorsScreen : Screen

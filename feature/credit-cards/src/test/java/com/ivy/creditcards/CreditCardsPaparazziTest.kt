@@ -3,6 +3,7 @@ package com.ivy.creditcards
 import com.google.testing.junit.testparameterinjector.TestParameter
 import com.google.testing.junit.testparameterinjector.TestParameterInjector
 import com.ivy.creditcards.preview.CreditCardDetailsUiTest
+import com.ivy.creditcards.preview.CreditCardPaymentsUiTest
 import com.ivy.creditcards.preview.CreditCardsCarouselUiTest
 import com.ivy.creditcards.preview.CreditCardsContentUiTest
 import com.ivy.creditcards.preview.EditCreditCardUiTest
@@ -56,6 +57,16 @@ class CreditCardsPaparazziTest(
     @Test
     fun `snapshot edit existing`() {
         snapshot(theme) { EditCreditCardUiTest(dark = dark, isEdit = true) }
+    }
+
+    @Test
+    fun `snapshot payments list`() {
+        snapshot(theme) { CreditCardPaymentsUiTest(dark = dark, empty = false) }
+    }
+
+    @Test
+    fun `snapshot payments empty`() {
+        snapshot(theme) { CreditCardPaymentsUiTest(dark = dark, empty = true) }
     }
 
     @Test

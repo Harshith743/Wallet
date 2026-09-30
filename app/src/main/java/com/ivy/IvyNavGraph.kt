@@ -11,6 +11,7 @@ import com.ivy.categories.CategoriesScreen
 import com.ivy.contributors.ContributorsScreenImpl
 import com.ivy.creditcards.details.CreditCardDetailsScreenImpl
 import com.ivy.creditcards.edit.EditCreditCardScreenImpl
+import com.ivy.creditcards.payments.CreditCardPaymentsScreenImpl
 import com.ivy.disclaimer.DisclaimerScreenImpl
 import com.ivy.exchangerates.ExchangeRatesScreen
 import com.ivy.features.FeaturesScreenImpl
@@ -26,6 +27,7 @@ import com.ivy.navigation.CSVScreen
 import com.ivy.navigation.CategoriesScreen
 import com.ivy.navigation.ContributorsScreen
 import com.ivy.navigation.CreditCardDetailsScreen
+import com.ivy.navigation.CreditCardPaymentsScreen
 import com.ivy.navigation.DisclaimerScreen
 import com.ivy.navigation.EditCreditCardScreen
 import com.ivy.navigation.EditPlannedScreen
@@ -86,6 +88,7 @@ fun BoxWithConstraintsScope.IvyNavGraph(screen: Screen?) {
         is CSVScreen -> CSVScreen(screen = screen)
         is EditCreditCardScreen -> EditCreditCardScreenImpl(screen = screen)
         is CreditCardDetailsScreen -> CreditCardDetailsScreenImpl(screen = screen)
+        is CreditCardPaymentsScreen -> CreditCardPaymentsScreenImpl(screen = screen)
         FeaturesScreen -> FeaturesScreenImpl()
         AttributionsScreen -> AttributionsScreenImpl()
         ContributorsScreen -> ContributorsScreenImpl()

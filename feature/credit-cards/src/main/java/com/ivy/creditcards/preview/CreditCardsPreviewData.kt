@@ -3,7 +3,8 @@ package com.ivy.creditcards.preview
 import androidx.compose.ui.graphics.Color
 import com.ivy.creditcards.CreditCardsUiState
 import com.ivy.creditcards.details.CreditCardDetailsUiState
-import com.ivy.creditcards.details.PaymentUi
+import com.ivy.creditcards.model.PaymentUi
+import com.ivy.creditcards.payments.CreditCardPaymentsUiState
 import com.ivy.creditcards.edit.CardField
 import com.ivy.creditcards.edit.EditCreditCardUiState
 import com.ivy.creditcards.edit.FieldError
@@ -161,16 +162,47 @@ object CreditCardsPreviewData {
         nextStatementDateText = "20 Oct 2026",
         lastPaidOnText = "8 Sep 2026",
         repaymentAccountName = "HDFC Savings",
-        payments = persistentListOf(
-            PaymentUi(
-                id = TransactionId(UUID.fromString("00000000-0000-0000-0000-000000000100")),
-                dateText = "Tue, Sep 8 2026",
-                amountText = "₹3,000.00",
-                fromAccountName = "HDFC Savings",
-                note = "August bill",
-            ),
-        ),
+        payments = payments,
         deleteDialogVisible = false,
+        loading = false,
+    )
+
+    val payments: ImmutableList<PaymentUi> = persistentListOf(
+        PaymentUi(
+            id = TransactionId(UUID.fromString("00000000-0000-0000-0000-000000000100")),
+            dateText = "Tue, Sep 8 2026",
+            amountText = "₹3,000.00",
+            fromAccountName = "HDFC Savings",
+            note = "August bill",
+        ),
+        PaymentUi(
+            id = TransactionId(UUID.fromString("00000000-0000-0000-0000-000000000101")),
+            dateText = "Sat, Aug 8 2026",
+            amountText = "₹4,120.50",
+            fromAccountName = "HDFC Savings",
+            note = null,
+        ),
+        PaymentUi(
+            id = TransactionId(UUID.fromString("00000000-0000-0000-0000-000000000102")),
+            dateText = "Wed, Jul 8 2026",
+            amountText = "₹2,000.00",
+            fromAccountName = null,
+            note = "Partial",
+        ),
+        PaymentUi(
+            id = TransactionId(UUID.fromString("00000000-0000-0000-0000-000000000103")),
+            dateText = "Mon, Jun 8 2026",
+            amountText = "₹5,600.00",
+            fromAccountName = "Cash",
+            note = null,
+        ),
+    )
+
+    fun paymentsState(
+        empty: Boolean = false,
+    ): CreditCardPaymentsUiState = CreditCardPaymentsUiState(
+        cardName = hdfc.name,
+        payments = if (empty) persistentListOf() else payments,
         loading = false,
     )
 }

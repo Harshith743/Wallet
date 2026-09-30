@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.creditcards.model.CreditCardUi
 import com.ivy.creditcards.model.CreditCardUiMapper
+import com.ivy.creditcards.model.PaymentUi
+import com.ivy.creditcards.model.PaymentUiMapper
 import com.ivy.creditcards.model.formatWithSymbol
 import com.ivy.data.DataObserver
 import com.ivy.data.DataWriteEvent
@@ -21,7 +23,6 @@ import com.ivy.domain.usecase.creditcard.CreditCardsOverviewUseCase
 import com.ivy.domain.usecase.creditcard.DeleteCreditCardUseCase
 import com.ivy.navigation.Navigation
 import com.ivy.ui.ComposeViewModel
-import com.ivy.ui.time.TimeFormatter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -48,7 +49,7 @@ class CreditCardDetailsViewModel @Inject constructor(
     private val deleteCreditCardUseCase: DeleteCreditCardUseCase,
     private val accountRepository: AccountRepository,
     private val uiMapper: CreditCardUiMapper,
-    private val timeFormatter: TimeFormatter,
+    private val paymentUiMapper: PaymentUiMapper,
     private val nav: Navigation,
     private val dataObserver: DataObserver,
     private val dispatchers: DispatchersProvider,
@@ -144,17 +145,9 @@ class CreditCardDetailsViewModel @Inject constructor(
         nextStatementDateText = item.statement.dates.nextStatementDate.text()
         lastPaidOnText = item.statement.lastPaidOn?.text()
         repaymentAccountName = item.card.repaymentAccountId?.let { accountRepository.findById(it)?.name?.value }
-        payments = paymentsUseCase.history(id).map { repayment ->
-            PaymentUi(
-                id = repayment.transfer.id,
-                dateText = with(timeFormatter) {
-                    repayment.transfer.time.formatLocal(TimeFormatter.Style.DateOnly(includeWeekDay = true))
-                },
-                amountText = formatWithSymbol(repayment.transfer.toValue.amount.value, currency),
-                fromAccountName = repayment.paidFrom?.name?.value,
-                note = repayment.transfer.description?.value,
-            )
-        }.toImmutableList()
+        payments = paymentsUseCase.history(id)
+            .map { paymentUiMapper.map(it, currency) }
+            .toImmutableList()
         loading = false
     }
 
