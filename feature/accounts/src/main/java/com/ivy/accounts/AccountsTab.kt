@@ -42,6 +42,8 @@ import com.ivy.creditcards.CreditCardsViewModel
 import com.ivy.creditcards.closeRevealOnTapOutside
 import com.ivy.creditcards.preview.CreditCardsPreviewData
 import com.ivy.creditcards.session.AccountsSegment
+import com.ivy.creditcards.ui.CarouselDefaults
+import com.ivy.creditcards.ui.CreditCardsCarousel
 import com.ivy.creditcards.ui.text
 import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
@@ -106,15 +108,16 @@ private fun BoxWithConstraintsScope.UI(
     val nav = navigation()
     val ivyContext = com.ivy.legacy.ivyWalletCtx()
     val segment = state.segment
-    var listState = rememberLazyListState()
-    if (!state.accountsData.isEmpty()) {
-        listState = rememberScrollPositionListState(
-            key = "accounts_lazy_column_${segment.name}",
-            initialFirstVisibleItemIndex = ivyContext.accountsListState?.firstVisibleItemIndex ?: 0,
-            initialFirstVisibleItemScrollOffset = ivyContext.accountsListState?.firstVisibleItemScrollOffset
-                ?: 0
-        )
-    }
+    // Both states are created unconditionally; only the accounts list restores its
+    // position (the cards item changes height when it expands or reveals)
+    val accountsListState = rememberScrollPositionListState(
+        key = "accounts_lazy_column",
+        initialFirstVisibleItemIndex = ivyContext.accountsListState?.firstVisibleItemIndex ?: 0,
+        initialFirstVisibleItemScrollOffset = ivyContext.accountsListState?.firstVisibleItemScrollOffset
+            ?: 0
+    )
+    val cardsListState = rememberLazyListState()
+    val listState = if (segment == AccountsSegment.ACCOUNTS) accountsListState else cardsListState
     val swipeListenerState = rememberSwipeListenerState()
     LazyColumn(
         modifier = Modifier
@@ -200,7 +203,13 @@ private fun BoxWithConstraintsScope.UI(
         }
 
         item {
-            Spacer(Modifier.height(150.dp)) // scroll hack
+            // scroll hack; the cards segment also clears the carousel strip
+            val bottomSpace = if (segment == AccountsSegment.CREDIT_CARDS) {
+                150.dp + CarouselDefaults.StripHeight + 16.dp
+            } else {
+                150.dp
+            }
+            Spacer(Modifier.height(bottomSpace))
         }
     }
 
@@ -224,6 +233,19 @@ private fun BoxWithConstraintsScope.UI(
                 color = item.account.color.value.toComposeColor(),
                 fontWeight = FontWeight.Bold
             )
+        )
+    }
+
+    if (segment == AccountsSegment.CREDIT_CARDS && creditCardsState.cards.isNotEmpty()) {
+        CreditCardsCarousel(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = CarouselDefaults.BottomClearance),
+            cards = creditCardsState.cards,
+            activeCardId = creditCardsState.activeCardId,
+            onSelectCard = { onCreditCardsEvent(CreditCardsUiEvent.SelectCard(it)) },
+            onAddCard = { nav.navigateTo(EditCreditCardScreen(cardId = null)) },
         )
     }
 
