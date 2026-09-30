@@ -550,6 +550,8 @@
     <string name="detected_with_tier">Detected: %1$s · %2$s</string>
     <string name="expiry_mm_yy">Expiry (MM/YY)</string>
     <string name="cvv">CVV</string>
+    <string name="expiry">Expiry</string>
+    <string name="copy_card_number">Copy card number</string>
     <string name="credit_limit">Credit limit</string>
     <string name="statement_day">Statement day (1–31)</string>
     <string name="payment_due_day">Payment due day (1–31)</string>

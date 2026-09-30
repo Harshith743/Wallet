@@ -2,6 +2,7 @@ package com.ivy.creditcards.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -14,10 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -32,13 +39,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.ivy.creditcards.model.CreditCardUi
 import com.ivy.creditcards.skin.brush
 import com.ivy.data.model.CardNetwork
-import coil.compose.AsyncImage
 import com.ivy.ui.R
-import java.io.File
 import com.ivy.wallet.ui.theme.Red
+import java.io.File
 
 object CreditCardFaceDefaults {
     const val AspectRatio = 1.586f
@@ -50,11 +57,32 @@ object CreditCardFaceDefaults {
     val ChipHeight: Dp = 28.dp
     val AccentBarWidth: Dp = 28.dp
     val AccentBarHeight: Dp = 3.dp
+    val RevealButtonSize: Dp = 40.dp
+    val RevealIconSize: Dp = 20.dp
+    val CopyIconSize: Dp = 16.dp
+    const val RevealButtonAlpha = 0.2f
 }
+
+/**
+ * The secret lines a details face shows instead of the last-4 and limit lines: the number
+ * (masked until [revealed]), the expiry (always visible) and the CVV (masked until
+ * [revealed]). The eye button toggles [revealed]; the copy icon shows while revealed.
+ */
+@Immutable
+data class CardFaceSecrets(
+    val numberText: String,
+    val expiryText: String,
+    val cvvText: String,
+    val revealed: Boolean,
+    val onToggleReveal: () -> Unit,
+    val onCopyNumber: () -> Unit,
+)
 
 /**
  * The card face: issuer wordmark, tier and accent, due amount and status, chip, network
  * and last 4 digits, cardholder name, remaining limit, and an optional "Pay now" button.
+ * With [secrets] (the details screen) it shows the card number, expiry and CVV instead,
+ * with an eye button to reveal or hide them.
  * Painted with the card's skin (bank gradient, plain colour or the owner's photo under a scrim).
  * Theme-agnostic (explicit styles) so it renders the same in the legacy tab and M3 screens.
  */
@@ -64,6 +92,7 @@ fun CreditCardFace(
     modifier: Modifier = Modifier,
     showPayNow: Boolean = false,
     onPayNow: () -> Unit = {},
+    secrets: CardFaceSecrets? = null,
 ) {
     val contrast = card.skin.textColor
     Box(
@@ -81,9 +110,19 @@ fun CreditCardFace(
         ) {
             FaceHeader(card = card, contrast = contrast)
             Spacer(Modifier.height(16.dp))
-            FaceIdentityRow(card = card, contrast = contrast)
+            FaceIdentityRow(card = card, contrast = contrast, showLast4 = secrets == null)
+            secrets?.let {
+                Spacer(Modifier.height(10.dp))
+                SecretNumberLine(secrets = it, contrast = contrast)
+            }
             Spacer(Modifier.weight(1f))
-            FaceFooter(card = card, contrast = contrast, showPayNow = showPayNow, onPayNow = onPayNow)
+            FaceFooter(
+                card = card,
+                contrast = contrast,
+                showPayNow = showPayNow,
+                onPayNow = onPayNow,
+                secrets = secrets,
+            )
         }
     }
 }
@@ -190,21 +229,54 @@ private fun StatusText(
 private fun FaceIdentityRow(
     card: CreditCardUi,
     contrast: Color,
+    showLast4: Boolean,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         CardChip()
         Spacer(Modifier.width(12.dp))
         NetworkWordmark(network = card.network, color = contrast)
-        Spacer(Modifier.width(8.dp))
+        if (showLast4) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "•• ${card.last4}",
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contrast,
+                    letterSpacing = 2.sp,
+                ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SecretNumberLine(
+    secrets: CardFaceSecrets,
+    contrast: Color,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
-            text = "•• ${card.last4}",
+            text = secrets.numberText,
             style = TextStyle(
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = contrast,
                 letterSpacing = 2.sp,
             ),
+            maxLines = 1,
         )
+        if (secrets.revealed) {
+            Spacer(Modifier.width(10.dp))
+            Icon(
+                modifier = Modifier
+                    .size(CreditCardFaceDefaults.CopyIconSize)
+                    .clickable(onClick = secrets.onCopyNumber),
+                imageVector = Icons.Outlined.ContentCopy,
+                contentDescription = stringResource(R.string.copy_card_number),
+                tint = contrast.copy(alpha = CreditCardFaceDefaults.SecondaryAlpha),
+            )
+        }
     }
 }
 
@@ -214,6 +286,7 @@ private fun FaceFooter(
     contrast: Color,
     showPayNow: Boolean,
     onPayNow: () -> Unit,
+    secrets: CardFaceSecrets?,
 ) {
     Row(verticalAlignment = Alignment.Bottom) {
         Column(modifier = Modifier.weight(1f)) {
@@ -228,18 +301,57 @@ private fun FaceFooter(
                 maxLines = 1,
             )
             Text(
-                text = stringResource(R.string.available_of_limit, card.availableText, card.limitText),
+                text = if (secrets == null) {
+                    stringResource(R.string.available_of_limit, card.availableText, card.limitText)
+                } else {
+                    "${stringResource(R.string.expiry)} ${secrets.expiryText}    " +
+                        "${stringResource(R.string.cvv)} ${secrets.cvvText}"
+                },
                 style = TextStyle(
                     fontSize = 11.sp,
                     color = contrast.copy(alpha = CreditCardFaceDefaults.SecondaryAlpha),
+                    letterSpacing = if (secrets == null) 0.sp else 1.sp,
                 ),
                 maxLines = 1,
             )
         }
-        if (showPayNow) {
-            Spacer(Modifier.width(12.dp))
-            PayNowButton(onClick = onPayNow)
+        when {
+            secrets != null -> {
+                Spacer(Modifier.width(12.dp))
+                RevealButton(revealed = secrets.revealed, contrast = contrast, onClick = secrets.onToggleReveal)
+            }
+
+            showPayNow -> {
+                Spacer(Modifier.width(12.dp))
+                PayNowButton(onClick = onPayNow)
+            }
         }
+    }
+}
+
+@Composable
+private fun RevealButton(
+    revealed: Boolean,
+    contrast: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(CreditCardFaceDefaults.RevealButtonSize)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = CreditCardFaceDefaults.RevealButtonAlpha))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            modifier = Modifier.size(CreditCardFaceDefaults.RevealIconSize),
+            painter = painterResource(if (revealed) R.drawable.ic_hidden else R.drawable.ic_visible),
+            contentDescription = stringResource(
+                if (revealed) R.string.hide_card_details else R.string.show_card_details
+            ),
+            tint = contrast,
+        )
     }
 }
 

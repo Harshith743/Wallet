@@ -24,12 +24,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ivy.creditcards.DeleteCardDialog
+import com.ivy.creditcards.model.CreditCardUi
 import com.ivy.creditcards.model.PaymentUi
+import com.ivy.creditcards.ui.CardFaceSecrets
 import com.ivy.creditcards.ui.CreditCardFace
 import com.ivy.creditcards.ui.PaymentRow
 import com.ivy.creditcards.ui.text
@@ -87,11 +91,11 @@ fun CreditCardDetailsUi(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item { CreditCardFace(card = card) }
             item {
-                RevealSection(
+                SecretsFace(
+                    card = card,
                     state = state,
-                    onToggle = { onEvent(CreditCardDetailsUiEvent.ToggleReveal) },
+                    onToggleReveal = { onEvent(CreditCardDetailsUiEvent.ToggleReveal) },
                 )
             }
             item { StatementCard(state = state) }
@@ -121,39 +125,37 @@ fun CreditCardDetailsUi(
     }
 }
 
+private const val MaskedCvv = "XXX"
+
+private fun maskedNumber(last4: String): String = "XXXX XXXX XXXX $last4"
+
+/** The card face with the number, expiry and CVV on it; the eye button reveals or hides them. */
 @Composable
-private fun RevealSection(
+private fun SecretsFace(
+    card: CreditCardUi,
     state: CreditCardDetailsUiState,
-    onToggle: () -> Unit,
+    onToggleReveal: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = state.fullNumberText
-                            ?: stringResource(R.string.card_ending_in, state.card?.last4.orEmpty()),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = "${stringResource(R.string.expiry_mm_yy)}: ${state.expiryText}" +
-                            (state.cvvText?.let { "   ${stringResource(R.string.cvv)}: $it" } ?: ""),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                TextButton(onClick = onToggle) {
-                    Text(stringResource(if (state.revealed) R.string.hide_card_details else R.string.show_card_details))
-                }
-            }
-            if (state.secretsMissing) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.card_secrets_missing),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
+    val clipboard = LocalClipboardManager.current
+    Column {
+        CreditCardFace(
+            card = card,
+            secrets = CardFaceSecrets(
+                numberText = state.fullNumberText ?: maskedNumber(card.last4),
+                expiryText = state.expiryText,
+                cvvText = state.cvvText ?: MaskedCvv,
+                revealed = state.revealed,
+                onToggleReveal = onToggleReveal,
+                onCopyNumber = { state.fullNumberText?.let { clipboard.setText(AnnotatedString(it)) } },
+            ),
+        )
+        if (state.secretsMissing) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.card_secrets_missing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }
