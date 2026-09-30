@@ -13,7 +13,6 @@ import com.ivy.creditcards.CreditCardsNavigation
 import com.ivy.creditcards.details.CreditCardDetailsUi
 import com.ivy.creditcards.edit.EditCreditCardUi
 import com.ivy.creditcards.payments.CreditCardPaymentsUi
-import com.ivy.creditcards.ui.CreditCardsCarousel
 import com.ivy.legacy.IvyWalletPreview
 import com.ivy.navigation.IvyPreview
 import kotlinx.collections.immutable.persistentListOf
@@ -51,21 +50,6 @@ fun CreditCardsContentUiTest(
                 ),
                 onEvent = {},
                 navigation = noNavigation,
-            )
-        }
-    }
-}
-
-/** For screenshot testing: the bottom carousel strip. */
-@Composable
-fun CreditCardsCarouselUiTest(dark: Boolean, modifier: Modifier = Modifier) {
-    IvyWalletPreview(theme = if (dark) LegacyTheme.DARK else LegacyTheme.LIGHT) {
-        Column(modifier = modifier.padding(vertical = 24.dp)) {
-            CreditCardsCarousel(
-                cards = CreditCardsPreviewData.cards,
-                activeCardId = CreditCardsPreviewData.slice.id,
-                onSelectCard = {},
-                onAddCard = {},
             )
         }
     }

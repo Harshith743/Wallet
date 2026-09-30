@@ -42,8 +42,6 @@ import com.ivy.creditcards.CreditCardsViewModel
 import com.ivy.creditcards.closeRevealOnTapOutside
 import com.ivy.creditcards.preview.CreditCardsPreviewData
 import com.ivy.creditcards.session.AccountsSegment
-import com.ivy.creditcards.ui.CarouselDefaults
-import com.ivy.creditcards.ui.CreditCardsCarousel
 import com.ivy.creditcards.ui.text
 import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
@@ -210,13 +208,8 @@ private fun BoxWithConstraintsScope.UI(
         }
 
         item {
-            // scroll hack; the cards segment also clears the carousel strip
-            val bottomSpace = if (segment == AccountsSegment.CREDIT_CARDS) {
-                150.dp + CarouselDefaults.StripHeight + 16.dp
-            } else {
-                150.dp
-            }
-            Spacer(Modifier.height(bottomSpace))
+            // scroll hack
+            Spacer(Modifier.height(150.dp))
         }
     }
 
@@ -240,19 +233,6 @@ private fun BoxWithConstraintsScope.UI(
                 color = item.account.color.value.toComposeColor(),
                 fontWeight = FontWeight.Bold
             )
-        )
-    }
-
-    if (segment == AccountsSegment.CREDIT_CARDS && creditCardsState.cards.isNotEmpty()) {
-        CreditCardsCarousel(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = CarouselDefaults.BottomClearance),
-            cards = creditCardsState.cards,
-            activeCardId = creditCardsState.activeCardId,
-            onSelectCard = { onCreditCardsEvent(CreditCardsUiEvent.SelectCard(it)) },
-            onAddCard = { nav.navigateTo(EditCreditCardScreen(cardId = null)) },
         )
     }
 

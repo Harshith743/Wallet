@@ -513,7 +513,6 @@
     <string name="recent_spends">Recent spends</string>
     <string name="view_details">View details</string>
     <string name="add_card">Add card</string>
-    <string name="all_cards_count">All (%1$d)</string>
     <string name="no_credit_cards_yet">No credit cards yet</string>
     <string name="no_credit_cards_hint">Add a card to track its statement, due date and available limit.</string>
     <string name="available_of_limit">Available %1$s of %2$s</string>
