@@ -21,4 +21,7 @@ enum class AccountsSegment {
 class AccountsSegmentSession @Inject constructor() {
     var segment: AccountsSegment by mutableStateOf(AccountsSegment.ACCOUNTS)
     var activeCreditCardId: AccountId? by mutableStateOf(null)
+
+    /** Whether the header breakdown drawer is open (shared by both segments). */
+    var breakdownExpanded: Boolean by mutableStateOf(false)
 }

@@ -42,6 +42,7 @@ import com.ivy.creditcards.CreditCardsViewModel
 import com.ivy.creditcards.closeRevealOnTapOutside
 import com.ivy.creditcards.preview.CreditCardsPreviewData
 import com.ivy.creditcards.session.AccountsSegment
+import com.ivy.creditcards.ui.text
 import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.primitive.AssetCode
@@ -74,7 +75,9 @@ import com.ivy.wallet.ui.theme.components.ReorderModalSingleType
 import com.ivy.wallet.ui.theme.dynamicContrast
 import com.ivy.wallet.ui.theme.findContrastTextColor
 import com.ivy.wallet.ui.theme.toComposeColor
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import java.util.UUID
 
 @Composable
@@ -140,13 +143,18 @@ private fun BoxWithConstraintsScope.UI(
             AccountsHeaderToolbar(
                 segment = segment,
                 showReorder = segment == AccountsSegment.ACCOUNTS,
+                dueCardsCount = creditCardsState.dueCardsCount,
                 onSegmentSelect = { onEvent(AccountsEvent.OnSegmentSelected(it)) },
                 onReorderClick = { onEvent(AccountsEvent.OnReorderModalVisible(reorderVisible = true)) },
                 onSettingsClick = { nav.navigateTo(SettingsScreen) },
             )
         }
         item {
-            HeaderSummary(state = state, creditCardsState = creditCardsState)
+            HeaderSummary(
+                state = state,
+                creditCardsState = creditCardsState,
+                onDrawerToggle = { onEvent(AccountsEvent.OnDrawerToggle) },
+            )
         }
         when (segment) {
             AccountsSegment.ACCOUNTS -> items(state.accountsData) {
@@ -226,7 +234,9 @@ private fun BoxWithConstraintsScope.UI(
 private fun HeaderSummary(
     state: AccountsState,
     creditCardsState: CreditCardsUiState,
+    onDrawerToggle: () -> Unit,
 ) {
+    val excludedTotal = state.currencySymbol + state.totalBalanceWithExcludedFormatted
     Column {
         Spacer(Modifier.height(16.dp))
         when (state.segment) {
@@ -235,28 +245,71 @@ private fun HeaderSummary(
                     caption = stringResource(R.string.total_balance),
                     currencySymbol = state.currencySymbol,
                     amountText = state.totalBalanceWithoutExcludedFormatted,
-                    secondaryLine = stringResource(R.string.total_balance_excluded) +
-                        ": ${state.currencySymbol}${state.totalBalanceWithExcludedFormatted}",
+                    secondaryLine = "${stringResource(R.string.total_balance_excluded)}: $excludedTotal",
+                    drawerExpanded = state.drawerExpanded,
+                    onDrawerToggle = onDrawerToggle,
                 )
+                BreakdownDrawer(expanded = state.drawerExpanded) {
+                    state.accountRows.forEach { row ->
+                        HeaderBreakdownRow(
+                            title = row.name,
+                            amountText = row.balanceText,
+                            subtitle = if (row.excluded) stringResource(R.string.excluded) else null,
+                            color = row.color,
+                        )
+                    }
+                    HeaderBreakdownRow(
+                        title = stringResource(R.string.total_balance_excluded),
+                        amountText = excludedTotal,
+                        emphasized = true,
+                    )
+                }
             }
 
-            AccountsSegment.CREDIT_CARDS -> AccountsHeaderSummary(
-                caption = if (creditCardsState.dueCardsCount > 0) {
-                    pluralStringResource(
-                        R.plurals.statement_due_for_cards,
-                        creditCardsState.dueCardsCount,
-                        creditCardsState.dueCardsCount,
-                    )
-                } else {
-                    stringResource(R.string.no_statement_due)
-                },
-                currencySymbol = state.currencySymbol,
-                amountText = creditCardsState.totalDueText.removePrefix(state.currencySymbol),
-            )
+            AccountsSegment.CREDIT_CARDS -> {
+                AccountsHeaderSummary(
+                    caption = if (creditCardsState.dueCardsCount > 0) {
+                        pluralStringResource(
+                            R.plurals.statement_due_for_cards,
+                            creditCardsState.dueCardsCount,
+                            creditCardsState.dueCardsCount,
+                        )
+                    } else {
+                        stringResource(R.string.no_statement_due)
+                    },
+                    currencySymbol = state.currencySymbol,
+                    amountText = creditCardsState.totalDueText.removePrefix(state.currencySymbol),
+                    drawerExpanded = state.drawerExpanded,
+                    onDrawerToggle = onDrawerToggle,
+                )
+                BreakdownDrawer(expanded = state.drawerExpanded) {
+                    creditCardsState.cards.forEach { card ->
+                        HeaderBreakdownRow(
+                            title = card.name,
+                            amountText = card.dueText,
+                            subtitle = "•• ${card.last4} · ${card.statement.text().lowercase()}",
+                            color = card.color,
+                        )
+                    }
+                }
+            }
         }
         Spacer(Modifier.height(16.dp))
     }
 }
+
+private const val PreviewBalanceText = "лв1,250.00"
+
+private fun previewAccountRows(vararg accounts: Account): ImmutableList<AccountBreakdownUi> =
+    accounts.map { account ->
+        AccountBreakdownUi(
+            id = account.id,
+            name = account.name.value,
+            color = account.color.value.toComposeColor(),
+            balanceText = PreviewBalanceText,
+            excluded = !account.includeInBalance,
+        )
+    }.toImmutableList()
 
 @Composable
 private fun AccountCard(
@@ -393,7 +446,7 @@ private fun AccountHeader(
 
 @Preview
 @Composable
-private fun PreviewAccountsTabCompactModeDisabled(theme: Theme = Theme.LIGHT) {
+private fun PreviewAccountsTabCompactModeDisabled(theme: Theme = Theme.LIGHT, drawerExpanded: Boolean = false) {
     IvyWalletPreview(theme = theme) {
         val acc1 = Account(
             id = AccountId(UUID.randomUUID()),
@@ -438,6 +491,8 @@ private fun PreviewAccountsTabCompactModeDisabled(theme: Theme = Theme.LIGHT) {
             segment = AccountsSegment.ACCOUNTS,
             baseCurrency = "BGN",
             currencySymbol = "лв",
+            accountRows = previewAccountRows(acc1, acc2, acc3, acc4),
+            drawerExpanded = drawerExpanded,
             accountsData = persistentListOf(
                 AccountData(
                     account = acc1,
@@ -484,7 +539,7 @@ private fun PreviewAccountsTabCompactModeDisabled(theme: Theme = Theme.LIGHT) {
 
 @Preview
 @Composable
-private fun PreviewAccountsTabCompactModeEnabled(theme: Theme = Theme.LIGHT) {
+private fun PreviewAccountsTabCompactModeEnabled(theme: Theme = Theme.LIGHT, drawerExpanded: Boolean = false) {
     IvyWalletPreview(theme = theme) {
         val acc1 = Account(
             id = AccountId(UUID.randomUUID()),
@@ -529,6 +584,8 @@ private fun PreviewAccountsTabCompactModeEnabled(theme: Theme = Theme.LIGHT) {
             segment = AccountsSegment.ACCOUNTS,
             baseCurrency = "BGN",
             currencySymbol = "лв",
+            accountRows = previewAccountRows(acc1, acc2, acc3, acc4),
+            drawerExpanded = drawerExpanded,
             accountsData = persistentListOf(
                 AccountData(
                     account = acc1,
@@ -575,12 +632,12 @@ private fun PreviewAccountsTabCompactModeEnabled(theme: Theme = Theme.LIGHT) {
 
 /** For screen shot testing **/
 @Composable
-fun AccountsTabNonCompactUITest(dark: Boolean) {
+fun AccountsTabNonCompactUITest(dark: Boolean, drawerExpanded: Boolean = false) {
     val theme = when (dark) {
         true -> Theme.DARK
         false -> Theme.LIGHT
     }
-    PreviewAccountsTabCompactModeDisabled(theme)
+    PreviewAccountsTabCompactModeDisabled(theme, drawerExpanded)
 }
 
 /** For screen shot testing **/
@@ -595,13 +652,19 @@ fun AccountsTabCompactUITest(dark: Boolean) {
 
 @Preview
 @Composable
-private fun PreviewAccountsTabCreditCards(theme: Theme = Theme.LIGHT, empty: Boolean = false) {
+private fun PreviewAccountsTabCreditCards(
+    theme: Theme = Theme.LIGHT,
+    empty: Boolean = false,
+    drawerExpanded: Boolean = false,
+) {
     IvyWalletPreview(theme = theme) {
         val state = AccountsState(
             segment = AccountsSegment.CREDIT_CARDS,
             baseCurrency = "INR",
             currencySymbol = "₹",
             accountsData = persistentListOf(),
+            accountRows = persistentListOf(),
+            drawerExpanded = drawerExpanded,
             totalBalanceWithExcluded = "0.0",
             totalBalanceWithExcludedText = "",
             totalBalanceWithoutExcluded = "0.0",
@@ -623,10 +686,10 @@ private fun PreviewAccountsTabCreditCards(theme: Theme = Theme.LIGHT, empty: Boo
 
 /** For screen shot testing **/
 @Composable
-fun AccountsTabCreditCardsUITest(dark: Boolean, empty: Boolean = false) {
+fun AccountsTabCreditCardsUITest(dark: Boolean, empty: Boolean = false, drawerExpanded: Boolean = false) {
     val theme = when (dark) {
         true -> Theme.DARK
         false -> Theme.LIGHT
     }
-    PreviewAccountsTabCreditCards(theme = theme, empty = empty)
+    PreviewAccountsTabCreditCards(theme = theme, empty = empty, drawerExpanded = drawerExpanded)
 }

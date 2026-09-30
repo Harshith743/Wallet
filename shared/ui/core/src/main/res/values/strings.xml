@@ -501,6 +501,8 @@
     <string name="segment_accounts">Accounts</string>
     <string name="segment_credit_cards">Credit cards</string>
     <string name="no_statement_due">No statement due</string>
+    <string name="show_breakdown">Show breakdown</string>
+    <string name="hide_breakdown">Hide breakdown</string>
     <plurals name="statement_due_for_cards">
         <item quantity="one">Statement due for %d card</item>
         <item quantity="other">Statement due for %d cards</item>

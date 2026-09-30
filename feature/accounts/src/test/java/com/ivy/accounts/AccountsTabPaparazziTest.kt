@@ -34,6 +34,20 @@ class AccountsTabPaparazziTest(
     }
 
     @Test
+    fun `snapshot accountTab drawer expanded composable`() {
+        snapshot(theme) {
+            AccountsTabNonCompactUITest(theme == PaparazziTheme.Dark, drawerExpanded = true)
+        }
+    }
+
+    @Test
+    fun `snapshot accountTab creditCards drawer expanded composable`() {
+        snapshot(theme) {
+            AccountsTabCreditCardsUITest(theme == PaparazziTheme.Dark, drawerExpanded = true)
+        }
+    }
+
+    @Test
     fun `snapshot accountTab creditCards empty composable`() {
         snapshot(theme) {
             AccountsTabCreditCardsUITest(theme == PaparazziTheme.Dark, empty = true)

@@ -7,4 +7,5 @@ sealed interface AccountsEvent {
         AccountsEvent
     data class OnReorderModalVisible(val reorderVisible: Boolean) : AccountsEvent
     data class OnSegmentSelected(val segment: AccountsSegment) : AccountsEvent
+    data object OnDrawerToggle : AccountsEvent
 }

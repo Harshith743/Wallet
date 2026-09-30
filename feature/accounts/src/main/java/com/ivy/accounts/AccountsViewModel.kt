@@ -29,6 +29,7 @@ import com.ivy.ui.R
 import com.ivy.ui.money.currencySymbol
 import com.ivy.wallet.domain.action.settings.BaseCurrencyAct
 import com.ivy.wallet.domain.action.viewmodel.account.AccountDataAct
+import com.ivy.wallet.ui.theme.toComposeColor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.ImmutableList
@@ -59,6 +60,7 @@ class AccountsViewModel @Inject constructor(
     private var baseCurrency by mutableStateOf("")
     private var currencySymbolText by mutableStateOf("")
     private var accountsData by mutableStateOf(listOf<AccountData>())
+    private var accountRows by mutableStateOf(listOf<AccountBreakdownUi>())
     private var totalBalanceWithExcluded by mutableStateOf("")
     private var totalBalanceWithExcludedText by mutableStateOf("")
     private var totalBalanceWithoutExcluded by mutableStateOf("")
@@ -93,12 +95,14 @@ class AccountsViewModel @Inject constructor(
             baseCurrency = getBaseCurrency(),
             currencySymbol = getCurrencySymbol(),
             accountsData = getAccountsData(),
+            accountRows = getAccountRows(),
             totalBalanceWithExcluded = getTotalBalanceWithExcluded(),
             totalBalanceWithExcludedText = getTotalBalanceWithExcludedText(),
             totalBalanceWithoutExcluded = getTotalBalanceWithoutExcluded(),
             totalBalanceWithoutExcludedText = getTotalBalanceWithoutExcludedText(),
             totalBalanceWithoutExcludedFormatted = getTotalBalanceWithoutExcludedFormatted(),
             totalBalanceWithExcludedFormatted = getTotalBalanceWithExcludedFormatted(),
+            drawerExpanded = getDrawerExpanded(),
             reorderVisible = getReorderVisible(),
             compactAccountsModeEnabled = getCompactAccountsMode(),
             hideTotalBalance = getHideTotalBalance()
@@ -108,6 +112,16 @@ class AccountsViewModel @Inject constructor(
     @Composable
     private fun getSegment(): AccountsSegment {
         return segmentSession.segment
+    }
+
+    @Composable
+    private fun getDrawerExpanded(): Boolean {
+        return segmentSession.breakdownExpanded
+    }
+
+    @Composable
+    private fun getAccountRows(): ImmutableList<AccountBreakdownUi> {
+        return accountRows.toImmutableList()
     }
 
     @Composable
@@ -176,6 +190,8 @@ class AccountsViewModel @Inject constructor(
                 is AccountsEvent.OnReorder -> reorder(event.reorderedList)
                 is AccountsEvent.OnReorderModalVisible -> reorderModalVisible(event.reorderVisible)
                 is AccountsEvent.OnSegmentSelected -> segmentSession.segment = event.segment
+                AccountsEvent.OnDrawerToggle ->
+                    segmentSession.breakdownExpanded = !segmentSession.breakdownExpanded
             }
         }
     }
@@ -235,6 +251,16 @@ class AccountsViewModel @Inject constructor(
         baseCurrency = baseCurrencyCode
         currencySymbolText = currencySymbol(baseCurrencyCode)
         accountsData = accountsDataList
+        accountRows = accountsDataList.map { data ->
+            val code = data.account.asset.code
+            AccountBreakdownUi(
+                id = data.account.id,
+                name = data.account.name.value,
+                color = data.account.color.value.toComposeColor(),
+                balanceText = currencySymbol(code) + data.balance.format(code),
+                excluded = !data.account.includeInBalance,
+            )
+        }
         totalBalanceWithExcluded = totalBalanceWithExcludedAccounts.toString()
         totalBalanceWithExcludedFormatted = totalBalanceWithExcludedAccounts.format(baseCurrencyCode)
         totalBalanceWithExcludedText = context.getString(
