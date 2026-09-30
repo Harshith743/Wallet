@@ -3,6 +3,7 @@ package com.ivy.creditcards
 import arrow.core.Either
 import arrow.core.Some
 import com.ivy.base.TestDispatchersProvider
+import com.ivy.creditcards.model.CreditCardUiMapper
 import com.ivy.creditcards.model.StatementLabelMapper
 import com.ivy.creditcards.session.AccountsSegmentSession
 import com.ivy.data.DataObserver
@@ -27,6 +28,7 @@ import com.ivy.domain.usecase.creditcard.RecordCreditCardPaymentUseCase
 import com.ivy.ui.testing.ComposeViewModelTest
 import com.ivy.ui.testing.runTest
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.next
 import io.mockk.coEvery
@@ -71,7 +73,7 @@ class CreditCardsViewModelTest : ComposeViewModelTest() {
             deleteCreditCardUseCase = deleteCreditCardUseCase,
             accountRepository = accountRepository,
             currencyRepository = currencyRepository,
-            statementLabelMapper = StatementLabelMapper(),
+            uiMapper = CreditCardUiMapper(StatementLabelMapper()),
             session = session,
             dataObserver = DataObserver(),
             dispatchers = TestDispatchersProvider,
@@ -97,6 +99,47 @@ class CreditCardsViewModelTest : ComposeViewModelTest() {
             activeCardId shouldBe secondId
             expanded shouldBe false
             session.activeCreditCardId shouldBe secondId
+        }
+    }
+
+    @Test
+    fun `expanding via swipe up closes any reveal`() {
+        viewModel.runTest(
+            events = listOf(CreditCardsUiEvent.Reveal(firstId), CreditCardsUiEvent.ExpandStack)
+        ) {
+            expanded shouldBe true
+            revealedCardId shouldBe null
+        }
+    }
+
+    @Test
+    fun `reveal is exclusive and a stale close is ignored`() {
+        viewModel.runTest(
+            events = listOf(
+                CreditCardsUiEvent.Reveal(firstId),
+                CreditCardsUiEvent.Reveal(secondId),
+                CreditCardsUiEvent.CloseReveal(firstId),
+            )
+        ) {
+            revealedCardId shouldBe secondId
+        }
+        viewModel.runTest(events = listOf(CreditCardsUiEvent.CloseReveal(null))) {
+            revealedCardId shouldBe null
+        }
+    }
+
+    @Test
+    fun `selecting a card and mark as paid close the reveal`() {
+        viewModel.runTest(
+            events = listOf(CreditCardsUiEvent.Reveal(firstId), CreditCardsUiEvent.SelectCard(secondId))
+        ) {
+            revealedCardId shouldBe null
+        }
+        viewModel.runTest(
+            events = listOf(CreditCardsUiEvent.Reveal(firstId), CreditCardsUiEvent.MarkAsPaidClick(firstId))
+        ) {
+            revealedCardId shouldBe null
+            paySheet shouldNotBe null
         }
     }
 

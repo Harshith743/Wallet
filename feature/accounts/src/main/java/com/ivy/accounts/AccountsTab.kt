@@ -39,6 +39,7 @@ import com.ivy.creditcards.CreditCardsOverlays
 import com.ivy.creditcards.CreditCardsUiEvent
 import com.ivy.creditcards.CreditCardsUiState
 import com.ivy.creditcards.CreditCardsViewModel
+import com.ivy.creditcards.closeRevealOnTapOutside
 import com.ivy.creditcards.preview.CreditCardsPreviewData
 import com.ivy.creditcards.session.AccountsSegment
 import com.ivy.data.model.Account
@@ -129,6 +130,9 @@ private fun BoxWithConstraintsScope.UI(
                         ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
                     }
                 )
+            }
+            .closeRevealOnTapOutside(enabled = creditCardsState.revealedCardId != null) {
+                onCreditCardsEvent(CreditCardsUiEvent.CloseReveal(null))
             },
         state = listState
     ) {
@@ -181,6 +185,7 @@ private fun BoxWithConstraintsScope.UI(
                         onRecentSpends = {
                             nav.navigateTo(TransactionsScreen(accountId = it.value, categoryId = null))
                         },
+                        onPaymentHistory = { nav.navigateTo(CreditCardDetailsScreen(cardId = it.value)) },
                     ),
                 )
             }

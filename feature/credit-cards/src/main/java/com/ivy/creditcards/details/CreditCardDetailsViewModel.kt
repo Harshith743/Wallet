@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.creditcards.model.CreditCardUi
-import com.ivy.creditcards.model.StatementLabelMapper
+import com.ivy.creditcards.model.CreditCardUiMapper
 import com.ivy.creditcards.model.formatWithSymbol
 import com.ivy.data.DataObserver
 import com.ivy.data.DataWriteEvent
@@ -16,14 +16,12 @@ import com.ivy.data.model.AccountId
 import com.ivy.data.repository.AccountRepository
 import com.ivy.data.repository.CardSecretsError
 import com.ivy.data.repository.CreditCardSecretsRepository
-import com.ivy.domain.model.CreditCardWithStatement
 import com.ivy.domain.usecase.creditcard.CreditCardPaymentsUseCase
 import com.ivy.domain.usecase.creditcard.CreditCardsOverviewUseCase
 import com.ivy.domain.usecase.creditcard.DeleteCreditCardUseCase
 import com.ivy.navigation.Navigation
 import com.ivy.ui.ComposeViewModel
 import com.ivy.ui.time.TimeFormatter
-import com.ivy.wallet.ui.theme.toComposeColor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -49,7 +47,7 @@ class CreditCardDetailsViewModel @Inject constructor(
     private val secretsRepository: CreditCardSecretsRepository,
     private val deleteCreditCardUseCase: DeleteCreditCardUseCase,
     private val accountRepository: AccountRepository,
-    private val statementLabelMapper: StatementLabelMapper,
+    private val uiMapper: CreditCardUiMapper,
     private val timeFormatter: TimeFormatter,
     private val nav: Navigation,
     private val dataObserver: DataObserver,
@@ -134,7 +132,7 @@ class CreditCardDetailsViewModel @Inject constructor(
             return
         }
         val currency = item.account.asset.code
-        card = item.toUi(currency)
+        card = uiMapper.map(item, currency)
         expiryText = "%02d/%02d".format(item.card.expiry.monthValue, item.card.expiry.year % YearInCentury)
         dueText = formatWithSymbol(item.statement.due.value, currency)
         unbilledText = formatWithSymbol(item.statement.unbilled.value, currency)
@@ -159,23 +157,6 @@ class CreditCardDetailsViewModel @Inject constructor(
         }.toImmutableList()
         loading = false
     }
-
-    private fun CreditCardWithStatement.toUi(currency: String): CreditCardUi = CreditCardUi(
-        id = card.id,
-        name = account.name.value,
-        issuer = card.issuer?.value ?: account.name.value,
-        network = card.network,
-        last4 = card.last4.value,
-        cardholderName = card.cardholderName?.value.orEmpty(),
-        color = account.color.value.toComposeColor(),
-        dueAmount = statement.due.value,
-        dueText = formatWithSymbol(statement.due.value, currency),
-        availableText = formatWithSymbol(statement.availableLimit, currency),
-        limitText = formatWithSymbol(card.creditLimit.value, currency),
-        statement = statementLabelMapper.map(statement.status),
-        repaymentAccountId = card.repaymentAccountId,
-        payeeVpa = card.payeeVpa?.value,
-    )
 
     private fun LocalDate.text(): String = format(dateFormatter)
 

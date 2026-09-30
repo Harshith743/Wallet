@@ -39,3 +39,10 @@ Branching: development happens on `dev`; `main` stays stable and receives merges
 - Transactions screen: for a card's account, "edit" opens the card editor instead of the account modal (currency and include-in-balance must not change for a card).
 - Paparazzi: new `CreditCardsPaparazziTest` (16 snapshots); `AccountsTabPaparazziTest` re-recorded with two extra cards-segment snapshots; the two orphan "accountTab composable" PNGs removed.
 - Deferred to phase 2: swipe-up/swipe-left gestures, the bottom card carousel, the due-count badge on the toggle, the expandable breakdown drawer, a full payment history screen, card reorder, online BIN lookup and card skins.
+
+## 2026-09-30
+
+### Credit cards feature, phase 2
+
+- Swipe gestures on card faces: swipe left slides the face away to reveal a 2×3 grid of quick actions (Mark as paid, Payment history, Recent spends, View details, Edit, Delete); swipe right, tap outside or back press closes it; only one card is revealed at a time. Swipe up on the active card expands the stack (tap still works). Built on Foundation's `anchoredDraggable` plus a small upward-only drag detector so the list keeps scrolling on downward and horizontal-ish drags. The quick-action row under the active card is gone. "Payment history" opens the card details until the dedicated screen lands.
+- `CreditCardUiMapper` replaces the duplicated card-to-UI mapping in the cards and details ViewModels.

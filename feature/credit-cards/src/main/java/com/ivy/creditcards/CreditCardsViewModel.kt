@@ -11,7 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.creditcards.model.AccountChipUi
 import com.ivy.creditcards.model.CreditCardUi
-import com.ivy.creditcards.model.StatementLabelMapper
+import com.ivy.creditcards.model.CreditCardUiMapper
 import com.ivy.creditcards.model.formatWithSymbol
 import com.ivy.creditcards.pay.UpiPaymentRequest
 import com.ivy.creditcards.session.AccountsSegmentSession
@@ -21,7 +21,6 @@ import com.ivy.data.model.AccountId
 import com.ivy.data.model.primitive.PositiveDouble
 import com.ivy.data.repository.AccountRepository
 import com.ivy.data.repository.CurrencyRepository
-import com.ivy.domain.model.CreditCardWithStatement
 import com.ivy.domain.usecase.creditcard.CreditCardsOverviewUseCase
 import com.ivy.domain.usecase.creditcard.DeleteCreditCardUseCase
 import com.ivy.domain.usecase.creditcard.RecordCreditCardPaymentUseCase
@@ -46,7 +45,7 @@ class CreditCardsViewModel @Inject constructor(
     private val deleteCreditCardUseCase: DeleteCreditCardUseCase,
     private val accountRepository: AccountRepository,
     private val currencyRepository: CurrencyRepository,
-    private val statementLabelMapper: StatementLabelMapper,
+    private val uiMapper: CreditCardUiMapper,
     private val session: AccountsSegmentSession,
     private val dataObserver: DataObserver,
     private val dispatchers: DispatchersProvider,
@@ -56,6 +55,7 @@ class CreditCardsViewModel @Inject constructor(
     private var cards by mutableStateOf<ImmutableList<CreditCardUi>>(persistentListOf())
     private var activeCardId by mutableStateOf<AccountId?>(null)
     private var expanded by mutableStateOf(false)
+    private var revealedCardId by mutableStateOf<AccountId?>(null)
     private var totalDueText by mutableStateOf("")
     private var dueCardsCount by mutableIntStateOf(0)
     private var paySheet by mutableStateOf<PaySheetUi?>(null)
@@ -85,6 +85,7 @@ class CreditCardsViewModel @Inject constructor(
             cards = cards,
             activeCardId = activeCardId,
             expanded = expanded,
+            revealedCardId = revealedCardId,
             totalDueText = totalDueText,
             dueCardsCount = dueCardsCount,
             paySheet = paySheet,
@@ -98,7 +99,10 @@ class CreditCardsViewModel @Inject constructor(
         viewModelScope.launch(dispatchers.default) {
             when (event) {
                 is CreditCardsUiEvent.SelectCard -> selectCard(event.id)
-                CreditCardsUiEvent.ToggleExpanded -> expanded = !expanded
+                CreditCardsUiEvent.ToggleExpanded -> changeExpanded(!expanded)
+                CreditCardsUiEvent.ExpandStack -> changeExpanded(true)
+                is CreditCardsUiEvent.Reveal -> revealedCardId = event.id
+                is CreditCardsUiEvent.CloseReveal -> closeReveal(event.id)
                 is CreditCardsUiEvent.PayNowClick -> openPaySheet(event.id, launchUpi = true)
                 is CreditCardsUiEvent.MarkAsPaidClick -> openPaySheet(event.id, launchUpi = false)
                 is CreditCardsUiEvent.PaySheetAmountChange -> updateSheet {
@@ -108,10 +112,15 @@ class CreditCardsViewModel @Inject constructor(
                 is CreditCardsUiEvent.PaySheetAccountSelect -> updateSheet {
                     copy(selectedAccountId = event.id, accountError = false)
                 }
+
                 is CreditCardsUiEvent.PaySheetNoteChange -> updateSheet { copy(note = event.note) }
                 CreditCardsUiEvent.PaySheetConfirm -> confirmPayment()
                 CreditCardsUiEvent.PaySheetDismiss -> paySheet = null
-                is CreditCardsUiEvent.DeleteClick -> deleteConfirmCardId = event.id
+                is CreditCardsUiEvent.DeleteClick -> {
+                    revealedCardId = null
+                    deleteConfirmCardId = event.id
+                }
+
                 CreditCardsUiEvent.DeleteConfirm -> confirmDelete()
                 CreditCardsUiEvent.DeleteDismiss -> deleteConfirmCardId = null
                 CreditCardsUiEvent.UpiLaunched -> pendingUpi = null
@@ -123,39 +132,34 @@ class CreditCardsViewModel @Inject constructor(
     private suspend fun load() {
         baseCurrency = currencyRepository.getBaseCurrency().code
         val overview = overviewUseCase.overview()
-        cards = overview.cards.map(::toUi).toImmutableList()
+        cards = overview.cards.map { uiMapper.map(it, baseCurrency) }.toImmutableList()
         totalDueText = formatWithSymbol(overview.totalDue, baseCurrency)
         dueCardsCount = overview.cardsWithDueCount
         activeCardId = session.activeCreditCardId?.takeIf { id -> cards.any { it.id == id } }
             ?: cards.firstOrNull()?.id
+        if (cards.none { it.id == revealedCardId }) revealedCardId = null
         loading = false
     }
-
-    private fun toUi(item: CreditCardWithStatement): CreditCardUi = CreditCardUi(
-        id = item.card.id,
-        name = item.account.name.value,
-        issuer = item.card.issuer?.value ?: item.account.name.value,
-        network = item.card.network,
-        last4 = item.card.last4.value,
-        cardholderName = item.card.cardholderName?.value.orEmpty(),
-        color = item.account.color.value.toComposeColor(),
-        dueAmount = item.statement.due.value,
-        dueText = formatWithSymbol(item.statement.due.value, baseCurrency),
-        availableText = formatWithSymbol(item.statement.availableLimit, baseCurrency),
-        limitText = formatWithSymbol(item.card.creditLimit.value, baseCurrency),
-        statement = statementLabelMapper.map(item.statement.status),
-        repaymentAccountId = item.card.repaymentAccountId,
-        payeeVpa = item.card.payeeVpa?.value,
-    )
 
     private fun selectCard(id: AccountId) {
         activeCardId = id
         session.activeCreditCardId = id
         expanded = false
+        revealedCardId = null
+    }
+
+    private fun changeExpanded(value: Boolean) {
+        expanded = value
+        revealedCardId = null
+    }
+
+    private fun closeReveal(id: AccountId?) {
+        if (id == null || revealedCardId == id) revealedCardId = null
     }
 
     private suspend fun openPaySheet(cardId: AccountId, launchUpi: Boolean) {
         val card = cards.firstOrNull { it.id == cardId } ?: return
+        revealedCardId = null
         val cardIds = cards.map { it.id }.toSet()
         val accounts = accountRepository.findAll()
             .filter { it.id !in cardIds }

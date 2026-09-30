@@ -22,6 +22,7 @@ private val noNavigation = CreditCardsNavigation(
     onViewDetails = {},
     onEditCard = {},
     onRecentSpends = {},
+    onPaymentHistory = {},
 )
 
 /** For screenshot testing: the cards segment as shown inside the Accounts tab. */
@@ -31,7 +32,9 @@ fun CreditCardsContentUiTest(
     expanded: Boolean,
     modifier: Modifier = Modifier,
     empty: Boolean = false,
+    revealed: Boolean = false,
 ) {
+    val cards = if (empty) persistentListOf() else CreditCardsPreviewData.cards
     IvyWalletPreview(theme = if (dark) LegacyTheme.DARK else LegacyTheme.LIGHT) {
         Column(
             modifier = modifier
@@ -40,8 +43,9 @@ fun CreditCardsContentUiTest(
         ) {
             CreditCardsContent(
                 state = CreditCardsPreviewData.cardsState(
-                    cards = if (empty) persistentListOf() else CreditCardsPreviewData.cards,
+                    cards = cards,
                     expanded = expanded,
+                    revealedCardId = if (revealed) cards.firstOrNull()?.id else null,
                 ),
                 onEvent = {},
                 navigation = noNavigation,
@@ -82,6 +86,12 @@ private fun PreviewCardsCollapsed() {
 @Composable
 private fun PreviewCardsExpandedDark() {
     CreditCardsContentUiTest(dark = true, expanded = true)
+}
+
+@Preview
+@Composable
+private fun PreviewCardsRevealed() {
+    CreditCardsContentUiTest(dark = false, expanded = false, revealed = true)
 }
 
 @Preview

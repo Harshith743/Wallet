@@ -28,6 +28,11 @@ class CreditCardsPaparazziTest(
     }
 
     @Test
+    fun `snapshot cards revealed`() {
+        snapshot(theme) { CreditCardsContentUiTest(dark = dark, expanded = false, revealed = true) }
+    }
+
+    @Test
     fun `snapshot cards empty`() {
         snapshot(theme) { CreditCardsContentUiTest(dark = dark, expanded = false, empty = true) }
     }

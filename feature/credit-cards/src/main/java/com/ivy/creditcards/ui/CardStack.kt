@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -33,60 +33,92 @@ object CardStackDefaults {
     const val InactiveAlpha = 0.92f
 }
 
+data class CardStackCallbacks(
+    val onSelectCard: (AccountId) -> Unit,
+    val onToggleExpanded: () -> Unit,
+    val onExpand: () -> Unit,
+    val onPayNow: (CreditCardUi) -> Unit,
+    val onViewDetails: (AccountId) -> Unit,
+    val onReveal: (AccountId) -> Unit,
+    val onCloseReveal: (AccountId) -> Unit,
+)
+
 /**
- * The active card on top with its "View details" pill and [activeExtras] (quick actions),
- * followed by the other cards: stacked with only their top band visible when collapsed,
- * or as a full list when [expanded]. Tapping the active card toggles, tapping another
- * card makes it active.
+ * The active card on top (tap toggles, swipe up expands, swipe left reveals the quick
+ * actions) with its "View details" pill, followed by the other cards: stacked with only
+ * their top band visible when collapsed, or as a full list of revealable cards when
+ * [expanded]. Tapping another card makes it active.
  */
 @Composable
 fun CardStack(
     cards: ImmutableList<CreditCardUi>,
     activeCardId: AccountId?,
     expanded: Boolean,
+    revealedCardId: AccountId?,
     callbacks: CardStackCallbacks,
+    quickActions: QuickActionCallbacks,
     modifier: Modifier = Modifier,
-    activeExtras: @Composable ColumnScope.(CreditCardUi) -> Unit = {},
 ) {
     val active = cards.firstOrNull { it.id == activeCardId } ?: cards.firstOrNull() ?: return
     val others = cards.filter { it.id != active.id }.toImmutableList()
     Column(modifier = modifier.animateContentSize()) {
-        CreditCardFace(
-            card = active,
-            modifier = Modifier.clickable { callbacks.onToggleExpanded() },
-            showPayNow = true,
-            onPayNow = { callbacks.onPayNow(active) },
-        )
+        key(active.id) {
+            RevealableCard(
+                card = active,
+                revealed = revealedCardId == active.id,
+                callbacks = RevealCallbacks(
+                    onClick = callbacks.onToggleExpanded,
+                    onReveal = { callbacks.onReveal(active.id) },
+                    onCloseReveal = { callbacks.onCloseReveal(active.id) },
+                    onPayNow = { callbacks.onPayNow(active) },
+                    onSwipeUp = callbacks.onExpand,
+                ),
+                showPayNow = true,
+                swipeUpEnabled = !expanded,
+            ) {
+                QuickActionGrid(cardId = active.id, callbacks = quickActions)
+            }
+        }
         ViewDetailsPill(onClick = { callbacks.onViewDetails(active.id) })
-        activeExtras(active)
         if (others.isEmpty()) return@Column
         Spacer(Modifier.height(CardStackDefaults.Gap))
         if (expanded) {
-            ExpandedList(cards = others, callbacks = callbacks)
+            ExpandedList(
+                cards = others,
+                revealedCardId = revealedCardId,
+                callbacks = callbacks,
+                quickActions = quickActions,
+            )
         } else {
             StackedPeek(cards = others, onSelect = callbacks.onSelectCard)
         }
     }
 }
 
-data class CardStackCallbacks(
-    val onSelectCard: (AccountId) -> Unit,
-    val onToggleExpanded: () -> Unit,
-    val onPayNow: (CreditCardUi) -> Unit,
-    val onViewDetails: (AccountId) -> Unit,
-)
-
 @Composable
 private fun ExpandedList(
     cards: ImmutableList<CreditCardUi>,
+    revealedCardId: AccountId?,
     callbacks: CardStackCallbacks,
+    quickActions: QuickActionCallbacks,
 ) {
     Column {
         cards.forEach { card ->
-            CreditCardFace(
-                card = card,
-                modifier = Modifier.clickable { callbacks.onSelectCard(card.id) },
-            )
+            key(card.id) {
+                RevealableCard(
+                    card = card,
+                    revealed = revealedCardId == card.id,
+                    callbacks = RevealCallbacks(
+                        onClick = { callbacks.onSelectCard(card.id) },
+                        onReveal = { callbacks.onReveal(card.id) },
+                        onCloseReveal = { callbacks.onCloseReveal(card.id) },
+                        onPayNow = { callbacks.onPayNow(card) },
+                        onSwipeUp = {},
+                    ),
+                ) {
+                    QuickActionGrid(cardId = card.id, callbacks = quickActions)
+                }
+            }
             ViewDetailsPill(onClick = { callbacks.onViewDetails(card.id) })
             Spacer(Modifier.height(CardStackDefaults.Gap))
         }
@@ -95,7 +127,8 @@ private fun ExpandedList(
 
 /**
  * Every inactive card is cropped to its top band (issuer, due amount, status); the last
- * one gets two bands so the stack reads as cards tucked behind each other.
+ * one gets two bands so the stack reads as cards tucked behind each other. Bands are
+ * tap-only: a 72 dp crop cannot host the quick-action grid.
  */
 @Composable
 private fun StackedPeek(

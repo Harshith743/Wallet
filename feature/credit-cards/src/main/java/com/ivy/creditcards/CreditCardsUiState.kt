@@ -14,6 +14,8 @@ data class CreditCardsUiState(
     val cards: ImmutableList<CreditCardUi>,
     val activeCardId: AccountId?,
     val expanded: Boolean,
+    /** The card whose quick-action grid is revealed (at most one). */
+    val revealedCardId: AccountId?,
     val totalDueText: String,
     val dueCardsCount: Int,
     val paySheet: PaySheetUi?,
@@ -40,6 +42,11 @@ data class PaySheetUi(
 sealed interface CreditCardsUiEvent {
     data class SelectCard(val id: AccountId) : CreditCardsUiEvent
     data object ToggleExpanded : CreditCardsUiEvent
+    data object ExpandStack : CreditCardsUiEvent
+    data class Reveal(val id: AccountId) : CreditCardsUiEvent
+
+    /** Close the revealed card; with an id only if that card is the revealed one. */
+    data class CloseReveal(val id: AccountId?) : CreditCardsUiEvent
     data class PayNowClick(val id: AccountId) : CreditCardsUiEvent
     data class MarkAsPaidClick(val id: AccountId) : CreditCardsUiEvent
     data class PaySheetAmountChange(val text: String) : CreditCardsUiEvent

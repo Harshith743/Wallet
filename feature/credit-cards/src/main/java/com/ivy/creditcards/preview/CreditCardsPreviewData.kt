@@ -92,10 +92,12 @@ object CreditCardsPreviewData {
     fun cardsState(
         cards: ImmutableList<CreditCardUi> = this.cards,
         expanded: Boolean = false,
+        revealedCardId: AccountId? = null,
     ): CreditCardsUiState = CreditCardsUiState(
         cards = cards,
         activeCardId = cards.firstOrNull()?.id,
         expanded = expanded,
+        revealedCardId = revealedCardId,
         totalDueText = "₹14,191.68",
         dueCardsCount = 2,
         paySheet = null,
