@@ -16,20 +16,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivy.base.legacy.Theme
@@ -76,10 +87,10 @@ import com.ivy.wallet.ui.theme.components.ReorderModalSingleType
 import com.ivy.wallet.ui.theme.dynamicContrast
 import com.ivy.wallet.ui.theme.findContrastTextColor
 import com.ivy.wallet.ui.theme.toComposeColor
+import java.util.UUID
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import java.util.UUID
 
 @Composable
 fun BoxWithConstraintsScope.AccountsTab() {
@@ -117,6 +128,15 @@ private fun BoxWithConstraintsScope.UI(
     )
     val cardsListState = rememberLazyListState()
     val listState = if (segment == AccountsSegment.ACCOUNTS) accountsListState else cardsListState
+    val stackScrollConnection = rememberStackScrollConnection(
+        listState = cardsListState,
+        expanded = creditCardsState.expanded,
+        onEvent = onCreditCardsEvent,
+    )
+    // Folding the list back (pull down, or selecting a listed card) returns to the top
+    LaunchedEffect(creditCardsState.expanded) {
+        if (!creditCardsState.expanded && cardsListState.canScrollBackward) cardsListState.animateScrollToItem(0)
+    }
     val swipeListenerState = rememberSwipeListenerState()
     LazyColumn(
         modifier = Modifier
@@ -138,7 +158,8 @@ private fun BoxWithConstraintsScope.UI(
             }
             .closeRevealOnTapOutside(enabled = creditCardsState.revealedCardId != null) {
                 onCreditCardsEvent(CreditCardsUiEvent.CloseReveal(null))
-            },
+            }
+            .thenIf(segment == AccountsSegment.CREDIT_CARDS) { nestedScroll(stackScrollConnection) },
         state = listState
     ) {
         stickyHeader {
@@ -701,4 +722,59 @@ fun AccountsTabCreditCardsUITest(dark: Boolean, empty: Boolean = false, drawerEx
         false -> Theme.LIGHT
     }
     PreviewAccountsTabCreditCards(theme = theme, empty = empty, drawerExpanded = drawerExpanded)
+}
+private val ExpandDragThreshold = 24.dp
+private val CollapseDragThreshold = 32.dp
+
+/**
+ * Turns page drags on the cards segment into stack state: dragging up anywhere unfolds the
+ * stack into the list; pulling down while the list is at the top folds it back. Deltas are
+ * only observed, never consumed, so the list scrolls as usual. Events are applied by the
+ * ViewModel asynchronously, so a per-gesture latch stops the threshold from re-firing.
+ */
+@Composable
+private fun rememberStackScrollConnection(
+    listState: LazyListState,
+    expanded: Boolean,
+    onEvent: (CreditCardsUiEvent) -> Unit,
+): NestedScrollConnection {
+    val currentExpanded by rememberUpdatedState(expanded)
+    val currentOnEvent by rememberUpdatedState(onEvent)
+    val density = LocalDensity.current
+    val expandPx = with(density) { ExpandDragThreshold.toPx() }
+    val collapsePx = with(density) { CollapseDragThreshold.toPx() }
+    return remember(listState, expandPx, collapsePx) {
+        object : NestedScrollConnection {
+            private var dragged = 0f
+            private var fired = false
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source != NestedScrollSource.Drag) return Offset.Zero
+                val dy = available.y
+                if (dy != 0f && (dragged > 0f) != (dy > 0f)) reset()
+                dragged += dy
+                if (!fired) fireIfPastThreshold()
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                reset()
+                return Velocity.Zero
+            }
+
+            private fun fireIfPastThreshold() {
+                val expand = !currentExpanded && dragged <= -expandPx
+                val collapse = currentExpanded && dragged >= collapsePx && !listState.canScrollBackward
+                if (expand || collapse) {
+                    fired = true
+                    currentOnEvent(if (expand) CreditCardsUiEvent.ExpandStack else CreditCardsUiEvent.CollapseStack)
+                }
+            }
+
+            private fun reset() {
+                dragged = 0f
+                fired = false
+            }
+        }
+    }
 }

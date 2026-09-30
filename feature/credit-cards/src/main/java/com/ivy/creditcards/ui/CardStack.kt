@@ -57,8 +57,6 @@ private const val ChevronRotation = -90f
 
 data class CardStackCallbacks(
     val onSelectCard: (AccountId) -> Unit,
-    val onToggleExpanded: () -> Unit,
-    val onExpand: () -> Unit,
     val onPayNow: (CreditCardUi) -> Unit,
     val onViewDetails: (AccountId) -> Unit,
     val onReveal: (AccountId) -> Unit,
@@ -66,11 +64,11 @@ data class CardStackCallbacks(
 )
 
 /**
- * The active card on top (tap toggles, swipe up expands, swipe left reveals the quick
- * actions), followed by the other cards: stacked with only their top band visible when
- * collapsed, or as a full list of revealable cards when [expanded]. A small "View details"
- * pill sits midway between cards, with [CardStackDefaults.Gap] on both sides. Tapping
- * another card makes it active.
+ * The active card on top (tap opens its details, swipe left reveals the quick actions),
+ * followed by the other cards: stacked behind each other when collapsed, or as a full list
+ * of revealable cards when [expanded]. Expanding and collapsing is driven by the page
+ * scroll (see the Accounts tab); tapping another card makes it active. A small
+ * "View details" pill sits midway between cards, with [CardStackDefaults.Gap] on both sides.
  */
 @Composable
 fun CardStack(
@@ -90,14 +88,12 @@ fun CardStack(
                 card = active,
                 revealed = revealedCardId == active.id,
                 callbacks = RevealCallbacks(
-                    onClick = callbacks.onToggleExpanded,
+                    onClick = { callbacks.onViewDetails(active.id) },
                     onReveal = { callbacks.onReveal(active.id) },
                     onCloseReveal = { callbacks.onCloseReveal(active.id) },
                     onPayNow = { callbacks.onPayNow(active) },
-                    onSwipeUp = callbacks.onExpand,
                 ),
                 showPayNow = true,
-                swipeUpEnabled = !expanded,
             ) {
                 QuickActionGrid(cardId = active.id, callbacks = quickActions)
             }
@@ -135,7 +131,6 @@ private fun ExpandedList(
                         onReveal = { callbacks.onReveal(card.id) },
                         onCloseReveal = { callbacks.onCloseReveal(card.id) },
                         onPayNow = { callbacks.onPayNow(card) },
-                        onSwipeUp = {},
                     ),
                 ) {
                     QuickActionGrid(cardId = card.id, callbacks = quickActions)

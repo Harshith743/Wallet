@@ -42,8 +42,13 @@ data class PaySheetUi(
 
 sealed interface CreditCardsUiEvent {
     data class SelectCard(val id: AccountId) : CreditCardsUiEvent
-    data object ToggleExpanded : CreditCardsUiEvent
+
+    /** Page dragged up: the stack unfolds into the list. */
     data object ExpandStack : CreditCardsUiEvent
+
+    /** List pulled down at the top: the list folds back into the stack. */
+    data object CollapseStack : CreditCardsUiEvent
+
     data class Reveal(val id: AccountId) : CreditCardsUiEvent
 
     /** Close the revealed card; with an id only if that card is the revealed one. */

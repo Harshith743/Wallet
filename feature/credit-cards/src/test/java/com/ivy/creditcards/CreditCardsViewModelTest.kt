@@ -96,7 +96,7 @@ class CreditCardsViewModelTest : ComposeViewModelTest() {
     @Test
     fun `selecting a card makes it active, collapses and remembers it in the session`() {
         viewModel.runTest(
-            events = listOf(CreditCardsUiEvent.ToggleExpanded, CreditCardsUiEvent.SelectCard(secondId))
+            events = listOf(CreditCardsUiEvent.ExpandStack, CreditCardsUiEvent.SelectCard(secondId))
         ) {
             activeCardId shouldBe secondId
             expanded shouldBe false
@@ -105,11 +105,25 @@ class CreditCardsViewModelTest : ComposeViewModelTest() {
     }
 
     @Test
-    fun `expanding via swipe up closes any reveal`() {
+    fun `expanding by scrolling closes any reveal`() {
         viewModel.runTest(
             events = listOf(CreditCardsUiEvent.Reveal(firstId), CreditCardsUiEvent.ExpandStack)
         ) {
             expanded shouldBe true
+            revealedCardId shouldBe null
+        }
+    }
+
+    @Test
+    fun `collapsing by pulling down folds the list and closes any reveal`() {
+        viewModel.runTest(
+            events = listOf(
+                CreditCardsUiEvent.ExpandStack,
+                CreditCardsUiEvent.Reveal(secondId),
+                CreditCardsUiEvent.CollapseStack,
+            )
+        ) {
+            expanded shouldBe false
             revealedCardId shouldBe null
         }
     }

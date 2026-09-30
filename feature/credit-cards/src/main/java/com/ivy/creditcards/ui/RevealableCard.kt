@@ -47,7 +47,6 @@ object RevealDefaults {
     /** Fraction of the travel after which a release settles on the far anchor. */
     const val PositionalThreshold = 0.4f
     val VelocityThreshold: Dp = 125.dp
-    val SwipeUpThreshold: Dp = 72.dp
 }
 
 data class RevealCallbacks(
@@ -55,12 +54,11 @@ data class RevealCallbacks(
     val onReveal: () -> Unit,
     val onCloseReveal: () -> Unit,
     val onPayNow: () -> Unit,
-    val onSwipeUp: () -> Unit,
 )
 
 /**
  * A card face that slides left to reveal [actions] behind it (swipe left to open,
- * swipe right to close), optionally swipes up, and reports settled reveal changes to the
+ * swipe right to close) and reports settled reveal changes to the
  * caller. Opening is always user-driven; the caller closes it by flipping [revealed].
  */
 @Composable
@@ -70,7 +68,6 @@ fun RevealableCard(
     callbacks: RevealCallbacks,
     modifier: Modifier = Modifier,
     showPayNow: Boolean = false,
-    swipeUpEnabled: Boolean = false,
     actions: @Composable () -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -109,7 +106,6 @@ fun RevealableCard(
                 // Clip before the gesture/click modifiers so touch feedback follows the rounded face
                 .clip(RoundedCornerShape(CreditCardFaceDefaults.CornerRadius))
                 .anchoredDraggable(state, Orientation.Horizontal)
-                .swipeUpToExpand(enabled = swipeUpEnabled) { current.onSwipeUp() }
                 .clickable {
                     if (state.currentValue == RevealValue.Open) current.onCloseReveal() else current.onClick()
                 },

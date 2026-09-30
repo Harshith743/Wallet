@@ -101,8 +101,8 @@ class CreditCardsViewModel @Inject constructor(
         viewModelScope.launch(dispatchers.default) {
             when (event) {
                 is CreditCardsUiEvent.SelectCard -> selectCard(event.id)
-                CreditCardsUiEvent.ToggleExpanded -> changeExpanded(!expanded)
                 CreditCardsUiEvent.ExpandStack -> changeExpanded(true)
+                CreditCardsUiEvent.CollapseStack -> changeExpanded(false)
                 is CreditCardsUiEvent.Reveal -> revealedCardId = event.id
                 is CreditCardsUiEvent.CloseReveal -> closeReveal(event.id)
                 is CreditCardsUiEvent.PayNowClick -> openPaySheet(event.id, launchUpi = true)

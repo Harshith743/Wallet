@@ -58,8 +58,6 @@ fun CreditCardsContent(
             revealedCardId = state.revealedCardId,
             callbacks = CardStackCallbacks(
                 onSelectCard = { onEvent(CreditCardsUiEvent.SelectCard(it)) },
-                onToggleExpanded = { onEvent(CreditCardsUiEvent.ToggleExpanded) },
-                onExpand = { onEvent(CreditCardsUiEvent.ExpandStack) },
                 onPayNow = { onEvent(CreditCardsUiEvent.PayNowClick(it.id)) },
                 onViewDetails = navigation.onViewDetails,
                 onReveal = { onEvent(CreditCardsUiEvent.Reveal(it)) },
