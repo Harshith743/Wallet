@@ -1,6 +1,7 @@
 package com.ivy.data.db.entity
 
 import androidx.annotation.Keep
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.ivy.base.kotlinxserilzation.KSerializerUUID
@@ -44,6 +45,11 @@ data class CreditCardEntity(
     val repaymentAccountId: UUID? = null,
     @SerialName("payeeVpa")
     val payeeVpa: String? = null,
+    @SerialName("tier")
+    val tier: String? = null,
+    @SerialName("skin")
+    @ColumnInfo(defaultValue = "AUTO")
+    val skin: String = "AUTO",
 
     @PrimaryKey
     @SerialName("id")

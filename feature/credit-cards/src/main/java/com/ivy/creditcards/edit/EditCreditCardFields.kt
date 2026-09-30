@@ -122,7 +122,16 @@ internal fun NetworkIssuerSection(
                 Spacer(Modifier.width(8.dp))
                 AssistChip(
                     onClick = { onEvent(EditCreditCardUiEvent.FieldChange(CardField.ISSUER, issuer)) },
-                    label = { Text(stringResource(R.string.detected, issuer)) },
+                    label = {
+                        val tier = state.detectedTier
+                        Text(
+                            if (tier == null) {
+                                stringResource(R.string.detected, issuer)
+                            } else {
+                                stringResource(R.string.detected_with_tier, issuer, tier)
+                            }
+                        )
+                    },
                 )
             }
         }

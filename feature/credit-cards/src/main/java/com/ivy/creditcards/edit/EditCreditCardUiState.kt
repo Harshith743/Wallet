@@ -46,6 +46,7 @@ data class EditCreditCardUiState(
     val detectedNetwork: CardNetwork,
     val networkOverride: CardNetwork?,
     val detectedIssuer: String?,
+    val detectedTier: String?,
     val issuer: String,
     val cardholderName: String,
     val cardName: String,

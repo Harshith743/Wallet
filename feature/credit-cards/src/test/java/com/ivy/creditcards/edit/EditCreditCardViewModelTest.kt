@@ -4,6 +4,8 @@ import arrow.core.Either
 import com.ivy.base.TestDispatchersProvider
 import com.ivy.data.model.CardNetwork
 import com.ivy.data.repository.AccountRepository
+import com.ivy.domain.creditcard.BinLookup
+import com.ivy.domain.creditcard.BinRecord
 import com.ivy.domain.usecase.creditcard.CreditCardDraft
 import com.ivy.domain.usecase.creditcard.CreditCardError
 import com.ivy.domain.usecase.creditcard.CreditCardsOverviewUseCase
@@ -27,6 +29,7 @@ class EditCreditCardViewModelTest : ComposeViewModelTest() {
     private val overviewUseCase = mockk<CreditCardsOverviewUseCase>()
     private val deleteUseCase = mockk<DeleteCreditCardUseCase>(relaxed = true)
     private val accountRepository = mockk<AccountRepository>()
+    private val binLookup = mockk<BinLookup>()
     private val nav = mockk<Navigation>(relaxed = true)
 
     private lateinit var viewModel: EditCreditCardViewModel
@@ -35,12 +38,14 @@ class EditCreditCardViewModelTest : ComposeViewModelTest() {
     fun setup() {
         coEvery { overviewUseCase.creditCardIds() } returns emptySet()
         coEvery { accountRepository.findAll() } returns emptyList()
+        coEvery { binLookup.lookup(any()) } returns null
         every { nav.back() } returns true
         viewModel = EditCreditCardViewModel(
             saveCreditCardUseCase = saveUseCase,
             overviewUseCase = overviewUseCase,
             deleteCreditCardUseCase = deleteUseCase,
             accountRepository = accountRepository,
+            binLookup = binLookup,
             nav = nav,
             dispatchers = TestDispatchersProvider,
         )
@@ -59,6 +64,44 @@ class EditCreditCardViewModelTest : ComposeViewModelTest() {
             network shouldBe CardNetwork.MASTERCARD
             isEdit shouldBe false
             loading shouldBe false
+        }
+    }
+
+    @Test
+    fun `a known BIN fills the issuer and tier, a typed issuer is kept`() {
+        coEvery { binLookup.lookup("461786") } returns BinRecord(
+            bin = "461786", brand = "VISA", cardType = "CREDIT", tier = "Platinum", issuer = "HDFC Bank",
+        )
+        viewModel.runTest(
+            events = listOf(
+                EditCreditCardUiEvent.Load(null),
+                EditCreditCardUiEvent.FieldChange(CardField.NUMBER, "461786"),
+            )
+        ) {
+            detectedIssuer shouldBe "HDFC Bank"
+            detectedTier shouldBe "Platinum"
+            issuer shouldBe "HDFC Bank"
+        }
+        viewModel.runTest(
+            events = listOf(
+                EditCreditCardUiEvent.FieldChange(CardField.ISSUER, "My Bank"),
+                EditCreditCardUiEvent.FieldChange(CardField.NUMBER, "4617861"),
+            )
+        ) {
+            issuer shouldBe "My Bank"
+        }
+    }
+
+    @Test
+    fun `an unknown Amex number defaults the issuer to the network`() {
+        viewModel.runTest(
+            events = listOf(
+                EditCreditCardUiEvent.Load(null),
+                EditCreditCardUiEvent.FieldChange(CardField.NUMBER, "378282246310005"),
+            )
+        ) {
+            detectedIssuer shouldBe "American Express"
+            detectedTier shouldBe null
         }
     }
 

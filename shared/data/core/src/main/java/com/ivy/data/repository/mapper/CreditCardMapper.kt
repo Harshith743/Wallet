@@ -6,6 +6,7 @@ import arrow.core.raise.ensure
 import com.ivy.data.db.entity.CreditCardEntity
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.CreditCard
 import com.ivy.data.model.primitive.CardBin
 import com.ivy.data.model.primitive.CardLast4
@@ -36,6 +37,8 @@ class CreditCardMapper @Inject constructor() {
             dueDay = DayOfMonth.from(dueDay).bind(),
             repaymentAccountId = repaymentAccountId?.let(::AccountId),
             payeeVpa = payeeVpa?.let(NotBlankTrimmedString::from)?.getOrNull(),
+            tier = tier?.let(NotBlankTrimmedString::from)?.getOrNull(),
+            skin = CardSkinMode.entries.firstOrNull { it.name == skin } ?: CardSkinMode.AUTO,
         )
     }
 
@@ -52,6 +55,8 @@ class CreditCardMapper @Inject constructor() {
         dueDay = dueDay.value,
         repaymentAccountId = repaymentAccountId?.value,
         payeeVpa = payeeVpa?.value,
+        tier = tier?.value,
+        skin = skin.name,
         id = id.value,
     )
 }

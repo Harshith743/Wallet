@@ -14,9 +14,11 @@ import com.ivy.data.DataObserver
 import com.ivy.data.db.IvyRoomDatabase
 import com.ivy.data.file.FileSystem
 import com.ivy.data.repository.AccountRepository
+import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.CurrencyRepository
 import com.ivy.data.repository.fake.fakeRepositoryMemoFactory
 import com.ivy.data.repository.mapper.AccountMapper
+import com.ivy.data.repository.mapper.CreditCardMapper
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import kotlinx.coroutines.runBlocking
@@ -44,8 +46,17 @@ class BackupDataUseCaseAndroidTest {
                 dispatchersProvider = TestDispatchersProvider,
             )
         )
+        val creditCardMapper = CreditCardMapper()
         useCase = BackupDataUseCase(
             accountDao = db.accountDao,
+            creditCardDao = db.creditCardDao,
+            creditCardMapper = creditCardMapper,
+            creditCardRepository = CreditCardRepository(
+                mapper = creditCardMapper,
+                creditCardDao = db.creditCardDao,
+                writeCreditCardDao = db.writeCreditCardDao,
+                memoFactory = fakeRepositoryMemoFactory(),
+            ),
             budgetDao = db.budgetDao,
             categoryDao = db.categoryDao,
             loanRecordDao = db.loanRecordDao,

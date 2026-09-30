@@ -13,6 +13,7 @@ import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.CardSecrets
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.CreditCard
 import com.ivy.data.model.Expense
 import com.ivy.data.model.PositiveValue
@@ -31,8 +32,9 @@ import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.CreditCardSecretsRepository
 import com.ivy.data.repository.CurrencyRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.domain.creditcard.BinLookup
 import com.ivy.domain.creditcard.CardNetworkDetector
-import com.ivy.domain.creditcard.IndianIssuerBinTable
+import com.ivy.domain.creditcard.defaultIssuerFor
 import com.ivy.domain.creditcard.isValidLuhn
 import com.ivy.domain.creditcard.normalizeCardNumber
 import com.ivy.domain.model.CreditCardWithAccount
@@ -64,6 +66,7 @@ class SaveCreditCardUseCase @Inject constructor(
     private val timeProvider: TimeProvider,
     private val timeConverter: TimeConverter,
     private val dataObserver: DataObserver,
+    private val binLookup: BinLookup,
 ) {
 
     suspend fun save(
@@ -110,6 +113,8 @@ class SaveCreditCardUseCase @Inject constructor(
             dueDay = dueDay,
             repaymentAccountId = draft.repaymentAccountId,
             payeeVpa = draft.payeeVpa?.let(NotBlankTrimmedString::from)?.getOrNull(),
+            tier = identity.tier?.let(NotBlankTrimmedString::from)?.getOrNull(),
+            skin = existing?.card?.skin ?: CardSkinMode.AUTO,
         )
 
         creditCardRepository.save(card)
@@ -135,7 +140,7 @@ class SaveCreditCardUseCase @Inject constructor(
         return expiry
     }
 
-    private fun Raise<CreditCardError>.resolveIdentity(
+    private suspend fun Raise<CreditCardError>.resolveIdentity(
         draft: CreditCardDraft,
         existing: CreditCard?,
     ): CardIdentity {
@@ -144,13 +149,16 @@ class SaveCreditCardUseCase @Inject constructor(
             ensure(isValidLuhn(digits)) { CreditCardError.InvalidCardNumber }
             val pan = CardPan.from(digits).mapLeft { CreditCardError.InvalidCardNumber }.bind()
             val network = draft.networkOverride ?: CardNetworkDetector.detect(digits)
+            val record = binLookup.lookup(digits)
             CardIdentity(
                 pan = pan,
                 last4 = CardLast4.unsafe(digits.takeLast(CardLast4.LENGTH)),
                 bin = CardBin.from(digits.take(CardBin.LENGTH)).getOrNull(),
                 network = network,
                 issuer = draft.issuerOverride?.takeIf { it.isNotBlank() }
-                    ?: IndianIssuerBinTable.lookup(digits, network),
+                    ?: record?.issuer
+                    ?: defaultIssuerFor(network),
+                tier = record?.tier,
             )
         } else {
             ensureNotNull(existing) { CreditCardError.CardNotFound }
@@ -160,6 +168,7 @@ class SaveCreditCardUseCase @Inject constructor(
                 bin = existing.bin,
                 network = draft.networkOverride ?: existing.network,
                 issuer = draft.issuerOverride?.takeIf { it.isNotBlank() } ?: existing.issuer?.value,
+                tier = existing.tier?.value,
             )
         }
     }
@@ -217,5 +226,6 @@ class SaveCreditCardUseCase @Inject constructor(
         val bin: CardBin?,
         val network: CardNetwork,
         val issuer: String?,
+        val tier: String?,
     )
 }

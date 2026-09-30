@@ -1,6 +1,7 @@
 package com.ivy.data
 
 import com.ivy.data.db.entity.CreditCardEntity
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.testing.cardBin
 import com.ivy.data.model.testing.cardLast4
 import com.ivy.data.model.testing.cardNetwork
@@ -9,6 +10,7 @@ import com.ivy.data.model.testing.notBlankTrimmedString
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.arbitrary
 import io.kotest.property.arbitrary.double
+import io.kotest.property.arbitrary.enum
 import io.kotest.property.arbitrary.int
 import io.kotest.property.arbitrary.of
 import io.kotest.property.arbitrary.uuid
@@ -27,6 +29,8 @@ fun Arb.Companion.validCreditCardEntity(): Arb<CreditCardEntity> = arbitrary {
         dueDay = Arb.int(min = 1, max = 31).bind(),
         repaymentAccountId = Arb.maybe(Arb.uuid()).bind(),
         payeeVpa = Arb.maybe(Arb.notBlankTrimmedString()).bind()?.value,
+        tier = Arb.maybe(Arb.notBlankTrimmedString()).bind()?.value,
+        skin = Arb.enum<CardSkinMode>().bind().name,
         id = Arb.uuid().bind(),
     )
 }

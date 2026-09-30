@@ -31,6 +31,12 @@ class AttributionsProvider @Inject constructor() {
             link = "https://fonts.google.com/specimen/Nunito+Sans?query=nunito"
         ),
 
+        AttributionItem.Divider(sectionName = "Data"),
+        AttributionItem.Attribution(
+            name = "binlist-data (card BIN dataset, CC BY 4.0)",
+            link = "https://github.com/iannuttall/binlist-data"
+        ),
+
         AttributionItem.Divider(sectionName = "Tech Stack"),
         AttributionItem.Attribution(
             name = "Kotlin",

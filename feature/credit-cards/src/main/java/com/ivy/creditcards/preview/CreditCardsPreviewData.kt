@@ -119,6 +119,7 @@ object CreditCardsPreviewData {
         detectedNetwork = CardNetwork.VISA,
         networkOverride = null,
         detectedIssuer = "HDFC Bank",
+        detectedTier = "Platinum",
         issuer = "HDFC Bank",
         cardholderName = "Harshith Reddy",
         cardName = if (withErrors) "" else "HDFC Pixel Go",

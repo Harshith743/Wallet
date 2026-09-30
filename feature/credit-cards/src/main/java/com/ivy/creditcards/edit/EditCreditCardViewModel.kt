@@ -14,8 +14,9 @@ import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.primitive.ColorInt
 import com.ivy.data.repository.AccountRepository
 import com.ivy.design.IVY_COLOR_PICKER_COLORS_FREE
+import com.ivy.domain.creditcard.BinLookup
 import com.ivy.domain.creditcard.CardNetworkDetector
-import com.ivy.domain.creditcard.IndianIssuerBinTable
+import com.ivy.domain.creditcard.defaultIssuerFor
 import com.ivy.domain.creditcard.isValidLuhn
 import com.ivy.domain.model.CreditCardWithAccount
 import com.ivy.domain.usecase.creditcard.CreditCardDraft
@@ -58,6 +59,7 @@ class EditCreditCardViewModel @Inject constructor(
     private val overviewUseCase: CreditCardsOverviewUseCase,
     private val deleteCreditCardUseCase: DeleteCreditCardUseCase,
     private val accountRepository: AccountRepository,
+    private val binLookup: BinLookup,
     private val nav: Navigation,
     private val dispatchers: DispatchersProvider,
 ) : ComposeViewModel<EditCreditCardUiState, EditCreditCardUiEvent>() {
@@ -73,6 +75,7 @@ class EditCreditCardViewModel @Inject constructor(
     private var detectedNetwork by mutableStateOf(CardNetwork.UNKNOWN)
     private var networkOverride by mutableStateOf<CardNetwork?>(null)
     private var detectedIssuer by mutableStateOf<String?>(null)
+    private var detectedTier by mutableStateOf<String?>(null)
     private var issuer by mutableStateOf("")
     private var cardholderName by mutableStateOf("")
     private var cardName by mutableStateOf("")
@@ -101,6 +104,7 @@ class EditCreditCardViewModel @Inject constructor(
         detectedNetwork = detectedNetwork,
         networkOverride = networkOverride,
         detectedIssuer = detectedIssuer,
+        detectedTier = detectedTier,
         issuer = issuer,
         cardholderName = cardholderName,
         cardName = cardName,
@@ -167,13 +171,15 @@ class EditCreditCardViewModel @Inject constructor(
         loading = false
     }
 
-    private fun fieldChange(field: CardField, value: String) {
+    private suspend fun fieldChange(field: CardField, value: String) {
         errors = errors.toMutableMap().apply { remove(field) }.toImmutableMap()
         when (field) {
             CardField.NUMBER -> {
                 cardNumber = value.filter { it.isDigit() }.take(MaxCardNumberDigits)
                 detectedNetwork = CardNetworkDetector.detect(cardNumber)
-                detectedIssuer = IndianIssuerBinTable.lookup(cardNumber, detectedNetwork)
+                val record = binLookup.lookup(cardNumber)
+                detectedIssuer = record?.issuer ?: defaultIssuerFor(detectedNetwork)
+                detectedTier = record?.tier
                 if (issuer.isBlank() || issuer == previousDetectedIssuer) {
                     issuer = detectedIssuer.orEmpty()
                 }

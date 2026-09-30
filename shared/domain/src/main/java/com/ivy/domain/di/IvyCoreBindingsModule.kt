@@ -1,5 +1,7 @@
 package com.ivy.domain.di
 
+import com.ivy.domain.creditcard.BinLookup
+import com.ivy.domain.creditcard.BundledBinDataset
 import com.ivy.domain.features.Features
 import com.ivy.domain.features.IvyFeatures
 import dagger.Binds
@@ -13,6 +15,9 @@ import dagger.hilt.components.SingletonComponent
 interface IvyCoreBindingsModule {
     @Binds
     fun bindFeatures(features: IvyFeatures): Features
+
+    @Binds
+    fun bindBinLookup(dataset: BundledBinDataset): BinLookup
 }
 
 @EntryPoint

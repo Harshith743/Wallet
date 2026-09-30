@@ -2,6 +2,7 @@ package com.ivy.data.repository.mapper
 
 import com.ivy.data.invalidCreditCardEntity
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.testing.creditCard
 import com.ivy.data.validCreditCardEntity
 import io.kotest.assertions.arrow.core.shouldBeLeft
@@ -54,5 +55,14 @@ class CreditCardMapperPropertyTest {
         val card = with(mapper) { entity.toDomain() }.getOrNull()
 
         card.shouldNotBeNull().network shouldBe CardNetwork.UNKNOWN
+    }
+
+    @Test
+    fun `unknown skin string maps to AUTO`() {
+        val entity = Arb.validCreditCardEntity().next().copy(skin = "HOLOGRAM")
+
+        val card = with(mapper) { entity.toDomain() }.getOrNull()
+
+        card.shouldNotBeNull().skin shouldBe CardSkinMode.AUTO
     }
 }

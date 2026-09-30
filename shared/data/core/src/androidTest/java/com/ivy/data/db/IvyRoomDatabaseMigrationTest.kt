@@ -10,6 +10,7 @@ import com.ivy.data.db.migration.Migration124to125_LoanEditDateTime
 import com.ivy.data.db.migration.Migration126to127_LoanRecordType
 import com.ivy.data.db.migration.Migration129to130_LoanIncludeNote
 import com.ivy.data.db.migration.Migration130to131_CreditCards
+import com.ivy.data.db.migration.Migration131to132_CreditCardSkins
 import com.ivy.data.model.LoanType
 import io.kotest.matchers.shouldBe
 import org.junit.Rule
@@ -55,6 +56,39 @@ class IvyRoomDatabaseMigrationTest {
             getString(0) shouldBe "6304"
             getDouble(1) shouldBe 36000.0
             getString(2) shouldBe cardId
+        }
+        newDb.close()
+    }
+
+    @Test
+    fun migrate131to132_CreditCardSkins() {
+        // given
+        val cardId = UUID.randomUUID().toString()
+        helper.createDatabase(TestDb, 131).apply {
+            execSQL(
+                """
+                INSERT INTO credit_cards (cardholderName, issuer, network, last4, bin, expiryMonth, expiryYear,
+                    creditLimit, billingDay, dueDay, repaymentAccountId, payeeVpa, id)
+                VALUES ('Harshith', 'HDFC Bank', 'VISA', '6304', '437551', 12, 2030, 36000.0, 5, 25, NULL, NULL, '$cardId');
+                """.trimIndent()
+            )
+            close()
+        }
+
+        // when
+        val newDb = helper.runMigrationsAndValidate(
+            TestDb,
+            132,
+            true,
+            Migration131to132_CreditCardSkins()
+        )
+
+        // then: existing rows get a null tier and the AUTO skin
+        newDb.query("SELECT tier, skin, last4 FROM credit_cards WHERE id = '$cardId'").apply {
+            moveToFirst() shouldBe true
+            isNull(0) shouldBe true
+            getString(1) shouldBe "AUTO"
+            getString(2) shouldBe "6304"
         }
         newDb.close()
     }

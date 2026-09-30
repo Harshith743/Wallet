@@ -5,6 +5,7 @@ import arrow.core.Option
 import arrow.core.getOrElse
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.CreditCard
 import com.ivy.data.model.primitive.CardBin
 import com.ivy.data.model.primitive.CardLast4
@@ -45,6 +46,8 @@ fun Arb.Companion.creditCard(
             Arb.maybe(Arb.accountId()).bind()
         },
         payeeVpa = Arb.maybe(Arb.notBlankTrimmedString()).bind(),
+        tier = Arb.maybe(Arb.notBlankTrimmedString()).bind(),
+        skin = Arb.enum<CardSkinMode>().bind(),
     )
 }
 

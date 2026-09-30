@@ -10,6 +10,7 @@ import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
 import com.ivy.data.model.CardNetwork
 import com.ivy.data.model.CardSecrets
+import com.ivy.data.model.CardSkinMode
 import com.ivy.data.model.CreditCard
 import com.ivy.data.model.Expense
 import com.ivy.data.model.primitive.AssetCode
@@ -23,6 +24,8 @@ import com.ivy.data.repository.CreditCardRepository
 import com.ivy.data.repository.CreditCardSecretsRepository
 import com.ivy.data.repository.CurrencyRepository
 import com.ivy.data.repository.TransactionRepository
+import com.ivy.domain.creditcard.BinLookup
+import com.ivy.domain.creditcard.BinRecord
 import com.ivy.domain.model.CreditCardWithAccount
 import io.kotest.assertions.arrow.core.shouldBeLeft
 import io.kotest.assertions.arrow.core.shouldBeRight
@@ -51,6 +54,7 @@ class SaveCreditCardUseCaseTest {
     private val timeProvider = mockk<TimeProvider>()
     private val dataObserver = mockk<DataObserver>(relaxed = true)
     private val timeConverter = TestTimeConverter()
+    private val binLookup = mockk<BinLookup>()
 
     private val today = LocalDate.of(2026, 9, 10)
     private val now = today.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC)
@@ -61,6 +65,7 @@ class SaveCreditCardUseCaseTest {
     @Before
     fun setup() {
         coEvery { accountRepository.findMaxOrderNum() } returns 3.0
+        coEvery { binLookup.lookup(any()) } returns null
         coEvery { secretsRepository.save(any(), any()) } returns Either.Right(Unit)
         coEvery { currencyRepository.getBaseCurrency() } returns inr
         every { timeProvider.localDateNow() } returns today
@@ -75,6 +80,7 @@ class SaveCreditCardUseCaseTest {
             timeProvider = timeProvider,
             timeConverter = timeConverter,
             dataObserver = dataObserver,
+            binLookup = binLookup,
         )
     }
 
@@ -162,6 +168,19 @@ class SaveCreditCardUseCaseTest {
     }
 
     @Test
+    fun `the BIN dataset fills the issuer and tier`() = runTest {
+        coEvery { binLookup.lookup("4111111111111111") } returns BinRecord(
+            bin = "411111", brand = "VISA", cardType = "CREDIT", tier = "Platinum", issuer = "HDFC Bank",
+        )
+
+        val result = useCase.save(validDraft(), existing = null).shouldBeRight()
+
+        result.card.issuer?.value shouldBe "HDFC Bank"
+        result.card.tier?.value shouldBe "Platinum"
+        result.card.skin shouldBe CardSkinMode.AUTO
+    }
+
+    @Test
     fun `overrides win over detection`() = runTest {
         val draft = validDraft().copy(networkOverride = CardNetwork.RUPAY, issuerOverride = "My Bank")
 
@@ -184,6 +203,8 @@ class SaveCreditCardUseCaseTest {
         result.card.last4 shouldBe existingCard.last4
         result.card.bin shouldBe existingCard.bin
         result.card.network shouldBe existingCard.network
+        result.card.tier shouldBe existingCard.tier
+        result.card.skin shouldBe existingCard.skin
         result.account.name.value shouldBe "Renamed"
         result.account.color shouldBe ColorInt(42)
         result.account.orderNum shouldBe 7.0

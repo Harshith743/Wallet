@@ -20,6 +20,13 @@ enum class CardNetwork {
     UNKNOWN,
 }
 
+/** How the card face is painted: bank/network theme, the account colour, or the owner's photo. */
+enum class CardSkinMode {
+    AUTO,
+    COLOR,
+    IMAGE,
+}
+
 /**
  * Card-specific details of a credit card.
  *
@@ -27,6 +34,8 @@ enum class CardNetwork {
  * name, colour, icon, currency and order and receives the card's transactions; this
  * model holds only what is specific to the card. Amounts (due, unbilled, outstanding,
  * available limit) are derived from the account's transactions and are not stored.
+ *
+ * @property tier product tier from the BIN dataset ("Platinum", "Signature"), if known.
  */
 @Suppress("DataClassTypedIDs") // the rule does not recognise nullable typed ids
 data class CreditCard(
@@ -42,6 +51,8 @@ data class CreditCard(
     val dueDay: DayOfMonth,
     val repaymentAccountId: AccountId?,
     val payeeVpa: NotBlankTrimmedString?,
+    val tier: NotBlankTrimmedString?,
+    val skin: CardSkinMode,
 ) : Identifiable<AccountId>
 
 /**

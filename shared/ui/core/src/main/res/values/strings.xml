@@ -548,6 +548,7 @@
     <string name="issuer">Bank / issuer</string>
     <string name="network">Network</string>
     <string name="detected">Detected: %1$s</string>
+    <string name="detected_with_tier">Detected: %1$s · %2$s</string>
     <string name="expiry_mm_yy">Expiry (MM/YY)</string>
     <string name="cvv">CVV</string>
     <string name="credit_limit">Credit limit</string>
