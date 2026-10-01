@@ -1,5 +1,11 @@
 package com.ivy.creditcards.ui
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -23,6 +29,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -63,6 +70,23 @@ private const val ChevronRotation = -90f
 private const val PillZIndex = -1f
 private val TopCenter = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 0f)
 
+/**
+ * How cards travel between slots: a spring without bounce (about 400 ms) that retargets
+ * smoothly when another change arrives mid-flight.
+ */
+private val CardMotion = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow,
+)
+private val HeightMotion = spring<Dp>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow,
+)
+
+/** A pill leaves quickly when its card starts moving and returns once the cards have nearly settled. */
+private val PillFadeOut = tween<Float>(durationMillis = 120)
+private val PillFadeIn = tween<Float>(durationMillis = 200, delayMillis = 220)
+
 data class CardStackCallbacks(
     val onSelectCard: (AccountId) -> Unit,
     val onPayNow: (CreditCardUi) -> Unit,
@@ -78,8 +102,10 @@ data class CardStackCallbacks(
  * with its own pill, when [expanded]. Expanding and collapsing is driven by the page scroll
  * (see the Accounts tab); tapping another card makes it active.
  *
- * Each card is the same keyed node in both arrangements and is positioned from its
- * [CardSlot] (see [CardStackLayout]), so cards can move between arrangements.
+ * Each card is the same keyed node in both arrangements and glides to its [CardSlot] (see
+ * [CardStackLayout]) whenever the arrangement or the active card changes: the stack unfolds
+ * into the list and back, and a tapped card rises to the top in front of the old active
+ * card, which sinks into the stack, while the pill fades out and back in.
  */
 @Composable
 fun CardStack(
@@ -105,13 +131,20 @@ fun CardStack(
                 cardHeight = cardHeight,
             )
         }
-        val stackHeight = CardStackLayout.height(count = cards.size, expanded = expanded, cardHeight = cardHeight)
+        val density = LocalDensity.current
+        val cardHeightPx = with(density) { cardHeight.toPx() }
+        // Growing (expand) is immediate so the ongoing drag is never clamped; shrinking glides
+        val stackHeight = animateDpAsState(
+            targetValue = CardStackLayout.height(count = cards.size, expanded = expanded, cardHeight = cardHeight),
+            animationSpec = if (expanded) snap() else HeightMotion,
+            label = "card stack height",
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 // The stack's height is set in the layout phase; children keep fixed constraints
                 .layout { measurable, constraints ->
-                    val height = stackHeight.roundToPx()
+                    val height = stackHeight.value.roundToPx()
                     val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
                     layout(placeable.width, height) { placeable.place(0, 0) }
                 }
@@ -120,6 +153,19 @@ fun CardStack(
                 val slot = slots[index]
                 val isActive = index == activeIndex
                 key(card.id) {
+                    // Read only inside draw/layer lambdas: moving a card never recomposes it
+                    val y = animateFloatAsState(
+                        targetValue = with(density) { slot.y.toPx() },
+                        animationSpec = CardMotion,
+                        label = "card y",
+                    )
+                    val scale = animateFloatAsState(slot.scale, CardMotion, label = "card scale")
+                    val dim = animateFloatAsState(slot.dim, CardMotion, label = "card dim")
+                    val pillAlpha = animateFloatAsState(
+                        targetValue = slot.pillAlpha,
+                        animationSpec = if (slot.pillAlpha == 1f) PillFadeIn else PillFadeOut,
+                        label = "pill alpha",
+                    )
                     RevealableCard(
                         card = card,
                         revealed = revealedCardId == card.id,
@@ -136,15 +182,15 @@ fun CardStack(
                             // Unbounded: the card keeps the same constraints whatever the stack's height
                             .wrapContentHeight(align = Alignment.Top, unbounded = true)
                             .graphicsLayer {
-                                translationY = slot.y.toPx()
-                                scaleX = slot.scale
-                                scaleY = slot.scale
+                                translationY = y.value
+                                scaleX = scale.value
+                                scaleY = scale.value
                                 transformOrigin = TopCenter
                             },
                         showPayNow = isActive,
                         // Stacked cards are tap-only; the active card and listed cards can reveal
                         revealEnabled = isActive || expanded,
-                        dim = { slot.dim },
+                        dim = { dim.value },
                     ) {
                         QuickActionGrid(cardId = card.id, callbacks = quickActions)
                     }
@@ -154,8 +200,8 @@ fun CardStack(
                         modifier = Modifier
                             .zIndex(PillZIndex)
                             .graphicsLayer {
-                                translationY = (slot.y + cardHeight).toPx()
-                                alpha = slot.pillAlpha
+                                translationY = y.value + cardHeightPx * scale.value
+                                alpha = pillAlpha.value
                             },
                     )
                 }
