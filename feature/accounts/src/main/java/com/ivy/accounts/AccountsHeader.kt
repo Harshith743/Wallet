@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -39,12 +40,13 @@ import com.ivy.wallet.ui.theme.Red
 import com.ivy.wallet.ui.theme.White
 import com.ivy.wallet.ui.theme.components.CircleButtonFilled
 import com.ivy.wallet.ui.theme.components.IvyIcon
-import com.ivy.wallet.ui.theme.components.ReorderButton
 
 private val ToolbarHorizontalPadding = 16.dp
 private val PillHeight = 40.dp
 private val PillPadding = 4.dp
-private val SideButtonSpace = 56.dp
+private val SideButtonSpace = 40.dp
+private val SideButtonGap = 8.dp
+private val ToolbarVerticalPadding = 8.dp
 private val BadgeSize = 16.dp
 private val CaptionLetterSpacing = 2.sp
 private const val ChevronOpenRotation = 180f
@@ -66,22 +68,29 @@ fun AccountsHeaderToolbar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = ToolbarHorizontalPadding, vertical = 12.dp),
+            .padding(horizontal = ToolbarHorizontalPadding, vertical = ToolbarVerticalPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.width(SideButtonSpace), contentAlignment = Alignment.CenterStart) {
             if (showReorder) {
-                ReorderButton(onClick = onReorderClick)
+                ToolbarIcon(
+                    modifier = Modifier.testTag("reorder_button"),
+                    icon = R.drawable.ic_reorder,
+                    contentDescription = "reorder",
+                    onClick = onReorderClick,
+                )
             }
         }
+        Spacer(Modifier.width(SideButtonGap))
         SegmentPillToggle(
             modifier = Modifier.weight(1f),
             segment = segment,
             dueCardsCount = dueCardsCount,
             onSegmentSelect = onSegmentSelect,
         )
+        Spacer(Modifier.width(SideButtonGap))
         Box(modifier = Modifier.width(SideButtonSpace), contentAlignment = Alignment.CenterEnd) {
-            CircleButtonFilled(
+            ToolbarIcon(
                 modifier = Modifier.testTag("settings_button"),
                 icon = R.drawable.ic_settings,
                 contentDescription = "settings",
@@ -89,6 +98,24 @@ fun AccountsHeaderToolbar(
             )
         }
     }
+}
+
+/** A bare, compact toolbar icon (no filled circle), CRED style; the ripple stays circular. */
+@Composable
+private fun ToolbarIcon(
+    icon: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CircleButtonFilled(
+        modifier = modifier,
+        icon = icon,
+        contentDescription = contentDescription,
+        backgroundColor = Color.Transparent,
+        tint = UI.colors.pureInverse,
+        onClick = onClick,
+    )
 }
 
 @Composable
