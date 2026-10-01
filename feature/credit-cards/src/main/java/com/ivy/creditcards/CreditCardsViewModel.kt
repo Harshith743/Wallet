@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.lifecycle.viewModelScope
 import com.ivy.base.threading.DispatchersProvider
 import com.ivy.creditcards.model.AccountChipUi
@@ -30,12 +31,12 @@ import com.ivy.ui.ComposeViewModel
 import com.ivy.ui.money.currencySymbol
 import com.ivy.wallet.ui.theme.toComposeColor
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @Stable
 @HiltViewModel
@@ -140,22 +141,30 @@ class CreditCardsViewModel @Inject constructor(
     }
 
     private suspend fun load() {
-        baseCurrency = currencyRepository.getBaseCurrency().code
+        val currency = currencyRepository.getBaseCurrency().code
         val overview = overviewUseCase.overview()
-        cards = overview.cards.map { uiMapper.map(it, baseCurrency) }.toImmutableList()
-        totalDueText = formatWithSymbol(overview.totalDue, baseCurrency)
-        dueCardsCount = overview.cardsWithDueCount
-        activeCardId = session.activeCreditCardId?.takeIf { id -> cards.any { it.id == id } }
-            ?: cards.firstOrNull()?.id
-        if (cards.none { it.id == revealedCardId }) revealedCardId = null
-        loading = false
+        val loaded = overview.cards.map { uiMapper.map(it, currency) }.toImmutableList()
+        // One snapshot: the UI never sees the new cards with the old active card (which
+        // would play a swap animation on load)
+        Snapshot.withMutableSnapshot {
+            baseCurrency = currency
+            cards = loaded
+            totalDueText = formatWithSymbol(overview.totalDue, currency)
+            dueCardsCount = overview.cardsWithDueCount
+            activeCardId = session.activeCreditCardId?.takeIf { id -> loaded.any { it.id == id } }
+                ?: loaded.firstOrNull()?.id
+            if (loaded.none { it.id == revealedCardId }) revealedCardId = null
+            loading = false
+        }
     }
 
     private fun selectCard(id: AccountId) {
-        activeCardId = id
         session.activeCreditCardId = id
-        expanded = false
-        revealedCardId = null
+        Snapshot.withMutableSnapshot {
+            activeCardId = id
+            expanded = false
+            revealedCardId = null
+        }
     }
 
     private fun changeExpanded(value: Boolean) {

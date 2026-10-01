@@ -26,14 +26,16 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ivy.creditcards.model.CreditCardUi
-import kotlinx.coroutines.flow.drop
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.drop
 
 enum class RevealValue {
     Closed,
@@ -60,6 +62,8 @@ data class RevealCallbacks(
  * A card face that slides left to reveal [actions] behind it (swipe left to open,
  * swipe right to close) and reports settled reveal changes to the
  * caller. Opening is always user-driven; the caller closes it by flipping [revealed].
+ * With [revealEnabled] false the card is tap-only and [actions] is not composed.
+ * [dim] (0..1) darkens the face inside its rounded shape; it is read while drawing.
  */
 @Composable
 fun RevealableCard(
@@ -68,6 +72,8 @@ fun RevealableCard(
     callbacks: RevealCallbacks,
     modifier: Modifier = Modifier,
     showPayNow: Boolean = false,
+    revealEnabled: Boolean = true,
+    dim: () -> Float = { 0f },
     actions: @Composable () -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -90,14 +96,16 @@ fun RevealableCard(
         }
         val current by rememberUpdatedState(callbacks)
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .fillMaxWidth(RevealDefaults.OpenFraction)
-                .graphicsLayer { alpha = revealProgress(state.requireOffset(), openOffset) },
-        ) {
-            actions()
+        if (revealEnabled) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .fillMaxWidth(RevealDefaults.OpenFraction)
+                    .graphicsLayer { alpha = revealProgress(state.requireOffset(), openOffset) },
+            ) {
+                actions()
+            }
         }
         CreditCardFace(
             card = card,
@@ -105,7 +113,12 @@ fun RevealableCard(
                 .offset { IntOffset(state.requireOffset().roundToInt(), 0) }
                 // Clip before the gesture/click modifiers so touch feedback follows the rounded face
                 .clip(RoundedCornerShape(CreditCardFaceDefaults.CornerRadius))
-                .anchoredDraggable(state, Orientation.Horizontal)
+                .drawWithContent {
+                    drawContent()
+                    val amount = dim()
+                    if (amount > 0f) drawRect(Color.Black.copy(alpha = amount))
+                }
+                .anchoredDraggable(state, Orientation.Horizontal, enabled = revealEnabled)
                 .clickable {
                     if (state.currentValue == RevealValue.Open) current.onCloseReveal() else current.onClick()
                 },
