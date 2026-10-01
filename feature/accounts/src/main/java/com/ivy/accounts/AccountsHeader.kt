@@ -40,7 +40,6 @@ import com.ivy.wallet.ui.theme.White
 import com.ivy.wallet.ui.theme.components.CircleButtonFilled
 import com.ivy.wallet.ui.theme.components.IvyIcon
 import com.ivy.wallet.ui.theme.components.ReorderButton
-import com.ivy.wallet.ui.theme.pureBlur
 
 private val ToolbarHorizontalPadding = 16.dp
 private val PillHeight = 40.dp
@@ -67,7 +66,6 @@ fun AccountsHeaderToolbar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(pureBlur())
             .padding(horizontal = ToolbarHorizontalPadding, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

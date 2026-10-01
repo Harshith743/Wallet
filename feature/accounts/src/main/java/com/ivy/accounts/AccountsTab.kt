@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -77,6 +78,13 @@ import com.ivy.navigation.TransactionsScreen
 import com.ivy.navigation.navigation
 import com.ivy.navigation.screenScopedViewModel
 import com.ivy.ui.R
+import com.ivy.ui.haze.FrostedGlassDefaults
+import com.ivy.ui.haze.FrostedHeaderScaffold
+import com.ivy.ui.haze.HairlineEdge
+import com.ivy.ui.haze.frostedGlassStyle
+import com.ivy.ui.haze.frostedInspectionScrim
+import com.ivy.ui.haze.frostedPanel
+import com.ivy.ui.haze.rememberFrostedHairline
 import com.ivy.ui.rememberScrollPositionListState
 import com.ivy.wallet.ui.theme.Green
 import com.ivy.wallet.ui.theme.GreenLight
@@ -87,6 +95,8 @@ import com.ivy.wallet.ui.theme.components.ReorderModalSingleType
 import com.ivy.wallet.ui.theme.dynamicContrast
 import com.ivy.wallet.ui.theme.findContrastTextColor
 import com.ivy.wallet.ui.theme.toComposeColor
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 import java.util.UUID
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -138,61 +148,70 @@ private fun BoxWithConstraintsScope.UI(
         if (!creditCardsState.expanded && cardsListState.canScrollBackward) cardsListState.animateScrollToItem(0)
     }
     val swipeListenerState = rememberSwipeListenerState()
-    LazyColumn(
+    val accountsHazeState = remember { HazeState() }
+    val hazeStyle = frostedGlassStyle(background = UI.colors.pure, tint = UI.colors.pure)
+    // The toolbar is a frosted panel over the list, which scrolls underneath it
+    FrostedHeaderScaffold(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            // Only the Accounts segment swipes to Home; cards keep their own gestures
-            .thenIf(segment == AccountsSegment.ACCOUNTS) {
-                horizontalSwipeListener(
-                    sensitivity = 200,
-                    state = swipeListenerState,
-                    onSwipeLeft = {
-                        ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
-                    },
-                    onSwipeRight = {
-                        ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
-                    }
+            .navigationBarsPadding(),
+        header = {
+            ToolbarOverlay(
+                hazeState = accountsHazeState,
+                segment = segment,
+                creditCardsState = creditCardsState,
+                onEvent = onEvent,
+                onCreditCardsEvent = onCreditCardsEvent,
+            )
+        },
+    ) { headerHeight ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .haze(state = accountsHazeState, style = hazeStyle)
+                // Only the Accounts segment swipes to Home; cards keep their own gestures
+                .thenIf(segment == AccountsSegment.ACCOUNTS) {
+                    horizontalSwipeListener(
+                        sensitivity = 200,
+                        state = swipeListenerState,
+                        onSwipeLeft = {
+                            ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
+                        },
+                        onSwipeRight = {
+                            ivyContext.selectMainTab(com.ivy.legacy.data.model.MainTab.HOME)
+                        }
+                    )
+                }
+                .closeRevealOnTapOutside(enabled = creditCardsState.revealedCardId != null) {
+                    onCreditCardsEvent(CreditCardsUiEvent.CloseReveal(null))
+                }
+                .thenIf(segment == AccountsSegment.CREDIT_CARDS) { nestedScroll(stackScrollConnection) },
+            state = listState,
+            contentPadding = PaddingValues(top = headerHeight),
+        ) {
+            item {
+                HeaderSummary(
+                    state = state,
+                    creditCardsState = creditCardsState,
+                    onDrawerToggle = { onEvent(AccountsEvent.OnDrawerToggle) },
                 )
             }
-            .closeRevealOnTapOutside(enabled = creditCardsState.revealedCardId != null) {
-                onCreditCardsEvent(CreditCardsUiEvent.CloseReveal(null))
-            }
-            .thenIf(segment == AccountsSegment.CREDIT_CARDS) { nestedScroll(stackScrollConnection) },
-        state = listState
-    ) {
-        stickyHeader {
-            AccountsHeaderToolbar(
-                segment = segment,
-                showReorder = segment == AccountsSegment.ACCOUNTS || creditCardsState.cards.size > 1,
-                dueCardsCount = creditCardsState.dueCardsCount,
-                onSegmentSelect = { onEvent(AccountsEvent.OnSegmentSelected(it)) },
-                onReorderClick = {
-                    if (segment == AccountsSegment.ACCOUNTS) {
-                        onEvent(AccountsEvent.OnReorderModalVisible(reorderVisible = true))
-                    } else {
-                        onCreditCardsEvent(CreditCardsUiEvent.ReorderModalVisible(visible = true))
-                    }
-                },
-                onSettingsClick = { nav.navigateTo(SettingsScreen) },
-            )
-        }
-        item {
-            HeaderSummary(
-                state = state,
-                creditCardsState = creditCardsState,
-                onDrawerToggle = { onEvent(AccountsEvent.OnDrawerToggle) },
-            )
-        }
-        when (segment) {
-            AccountsSegment.ACCOUNTS -> items(state.accountsData) {
-                Spacer(Modifier.height(16.dp))
-                AccountCard(
-                    baseCurrency = state.baseCurrency,
-                    accountData = it,
-                    compactModeEnabled = state.compactAccountsModeEnabled,
-                    onBalanceClick = {
+            when (segment) {
+                AccountsSegment.ACCOUNTS -> items(state.accountsData) {
+                    Spacer(Modifier.height(16.dp))
+                    AccountCard(
+                        baseCurrency = state.baseCurrency,
+                        accountData = it,
+                        compactModeEnabled = state.compactAccountsModeEnabled,
+                        onBalanceClick = {
+                            nav.navigateTo(
+                                TransactionsScreen(
+                                    accountId = it.account.id.value,
+                                    categoryId = null
+                                )
+                            )
+                        }
+                    ) {
                         nav.navigateTo(
                             TransactionsScreen(
                                 accountId = it.account.id.value,
@@ -200,37 +219,30 @@ private fun BoxWithConstraintsScope.UI(
                             )
                         )
                     }
-                ) {
-                    nav.navigateTo(
-                        TransactionsScreen(
-                            accountId = it.account.id.value,
-                            categoryId = null
-                        )
+                }
+
+                AccountsSegment.CREDIT_CARDS -> item {
+                    CreditCardsContent(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        state = creditCardsState,
+                        onEvent = onCreditCardsEvent,
+                        navigation = CreditCardsNavigation(
+                            onAddCard = { nav.navigateTo(EditCreditCardScreen(cardId = null)) },
+                            onViewDetails = { nav.navigateTo(CreditCardDetailsScreen(cardId = it.value)) },
+                            onEditCard = { nav.navigateTo(EditCreditCardScreen(cardId = it.value)) },
+                            onRecentSpends = {
+                                nav.navigateTo(TransactionsScreen(accountId = it.value, categoryId = null))
+                            },
+                            onPaymentHistory = { nav.navigateTo(CreditCardPaymentsScreen(cardId = it.value)) },
+                        ),
                     )
                 }
             }
 
-            AccountsSegment.CREDIT_CARDS -> item {
-                CreditCardsContent(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    state = creditCardsState,
-                    onEvent = onCreditCardsEvent,
-                    navigation = CreditCardsNavigation(
-                        onAddCard = { nav.navigateTo(EditCreditCardScreen(cardId = null)) },
-                        onViewDetails = { nav.navigateTo(CreditCardDetailsScreen(cardId = it.value)) },
-                        onEditCard = { nav.navigateTo(EditCreditCardScreen(cardId = it.value)) },
-                        onRecentSpends = {
-                            nav.navigateTo(TransactionsScreen(accountId = it.value, categoryId = null))
-                        },
-                        onPaymentHistory = { nav.navigateTo(CreditCardPaymentsScreen(cardId = it.value)) },
-                    ),
-                )
+            item {
+                // scroll hack
+                Spacer(Modifier.height(150.dp))
             }
-        }
-
-        item {
-            // scroll hack
-            Spacer(Modifier.height(150.dp))
         }
     }
 
@@ -723,6 +735,41 @@ fun AccountsTabCreditCardsUITest(dark: Boolean, empty: Boolean = false, drawerEx
     }
     PreviewAccountsTabCreditCards(theme = theme, empty = empty, drawerExpanded = drawerExpanded)
 }
+
+/** The frosted toolbar drawn over the list; its hairline and preview scrim come from the theme. */
+@Composable
+private fun ToolbarOverlay(
+    hazeState: HazeState,
+    segment: AccountsSegment,
+    creditCardsState: CreditCardsUiState,
+    onEvent: (AccountsEvent) -> Unit,
+    onCreditCardsEvent: (CreditCardsUiEvent) -> Unit,
+) {
+    val nav = navigation()
+    val hairline = rememberFrostedHairline(
+        edge = HairlineEdge.Bottom,
+        color = UI.colors.medium.copy(alpha = FrostedGlassDefaults.HairlineAlpha),
+    )
+    val inspectionScrim = frostedInspectionScrim(UI.colors.pure)
+    AccountsHeaderToolbar(
+        modifier = Modifier
+            .frostedPanel(state = hazeState, hairline = hairline, inspectionScrim = inspectionScrim)
+            .statusBarsPadding(),
+        segment = segment,
+        showReorder = segment == AccountsSegment.ACCOUNTS || creditCardsState.cards.size > 1,
+        dueCardsCount = creditCardsState.dueCardsCount,
+        onSegmentSelect = { onEvent(AccountsEvent.OnSegmentSelected(it)) },
+        onReorderClick = {
+            if (segment == AccountsSegment.ACCOUNTS) {
+                onEvent(AccountsEvent.OnReorderModalVisible(reorderVisible = true))
+            } else {
+                onCreditCardsEvent(CreditCardsUiEvent.ReorderModalVisible(visible = true))
+            }
+        },
+        onSettingsClick = { nav.navigateTo(SettingsScreen) },
+    )
+}
+
 private val ExpandDragThreshold = 24.dp
 private val CollapseDragThreshold = 32.dp
 
