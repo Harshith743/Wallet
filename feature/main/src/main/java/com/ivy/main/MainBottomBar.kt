@@ -28,13 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +55,10 @@ import com.ivy.legacy.utils.springBounceFast
 import com.ivy.legacy.utils.toDensityDp
 import com.ivy.legacy.utils.toDensityPx
 import com.ivy.ui.R
+import com.ivy.ui.haze.FrostedGlassDefaults
+import com.ivy.ui.haze.FrostedHairline
+import com.ivy.ui.haze.HairlineEdge
+import com.ivy.ui.haze.frostedPanel
 import com.ivy.wallet.ui.theme.Gradient
 import com.ivy.wallet.ui.theme.GradientGreen
 import com.ivy.wallet.ui.theme.GradientIvy
@@ -67,15 +71,12 @@ import com.ivy.wallet.ui.theme.components.IvyOutlinedButton
 import com.ivy.wallet.ui.theme.gradientExpenses
 import com.ivy.wallet.ui.theme.modal.AddModalBackHandling
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 val TRN_BUTTON_CLICK_AREA_HEIGHT = 150.dp
 val FAB_BUTTON_SIZE = 56.dp
-private const val HairlineAlpha = 0.4f
-private val HairlineWidth = 1.dp
 
 @Deprecated("Old design system. Use `:ivy-design` and Material3")
 @Composable
@@ -599,21 +600,21 @@ private fun BoxWithConstraintsScope.FrostedTabsBar(
     hiddenPercent: Float,
     selectTab: (MainTab) -> Unit,
 ) {
-    val hairline = UI.colors.medium.copy(alpha = HairlineAlpha)
-    val hairlineWidth = with(LocalDensity.current) { HairlineWidth.toPx() }
+    val hairline = FrostedHairline(
+        edge = HairlineEdge.Top,
+        color = UI.colors.medium.copy(alpha = FrostedGlassDefaults.HairlineAlpha),
+        widthPx = with(LocalDensity.current) { FrostedGlassDefaults.HairlineWidth.toPx() },
+    )
+    val inspectionScrim = if (LocalInspectionMode.current) {
+        UI.colors.pure.copy(alpha = FrostedGlassDefaults.InspectionScrimAlpha)
+    } else {
+        null
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .align(Alignment.BottomCenter)
-            .hazeChild(state = hazeState)
-            .drawBehind {
-                drawLine(
-                    color = hairline,
-                    start = Offset.Zero,
-                    end = Offset(size.width, 0f),
-                    strokeWidth = hairlineWidth,
-                )
-            }
+            .frostedPanel(state = hazeState, hairline = hairline, inspectionScrim = inspectionScrim)
             .alpha(1f - hiddenPercent)
             .navigationBarsPadding()
             .clickableNoIndication(rememberInteractionSource()) {

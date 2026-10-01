@@ -17,6 +17,4 @@ dependencies {
     implementation(projects.shared.ui.navigation)
     implementation(projects.temp.legacyCode)
     implementation(projects.temp.oldDesign)
-
-    implementation(libs.haze)
 }

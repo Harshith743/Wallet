@@ -12,9 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ivy.accounts.AccountsTab
 import com.ivy.base.model.TransactionType
@@ -30,16 +28,12 @@ import com.ivy.navigation.EditPlannedScreen
 import com.ivy.navigation.EditTransactionScreen
 import com.ivy.navigation.MainScreen
 import com.ivy.navigation.navigation
+import com.ivy.ui.haze.frostedGlassStyle
 import com.ivy.wallet.domain.deprecated.logic.model.CreateAccountData
 import com.ivy.wallet.ui.theme.modal.edit.AccountModal
 import com.ivy.wallet.ui.theme.modal.edit.AccountModalData
-import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
-
-private const val BottomBarTintAlpha = 0.55f
-private const val BottomBarNoise = 0.05f
-private val BottomBarBlurRadius = 24.dp
 
 @ExperimentalAnimationApi
 @ExperimentalFoundationApi
@@ -84,12 +78,7 @@ private fun BoxWithConstraintsScope.UI(
             .fillMaxSize()
             .haze(
                 state = hazeState,
-                style = HazeDefaults.style(
-                    backgroundColor = UI.colors.pure,
-                    tint = Color.Black.copy(alpha = BottomBarTintAlpha),
-                    blurRadius = BottomBarBlurRadius,
-                    noiseFactor = BottomBarNoise,
-                ),
+                style = frostedGlassStyle(background = UI.colors.pure, tint = UI.colors.pure),
             )
     ) {
         when (tab) {
