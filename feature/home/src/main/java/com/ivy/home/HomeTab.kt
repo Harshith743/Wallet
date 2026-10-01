@@ -3,11 +3,12 @@ package com.ivy.home
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
@@ -31,6 +32,7 @@ import com.ivy.base.legacy.stringRes
 import com.ivy.design.api.LocalTimeConverter
 import com.ivy.design.api.LocalTimeFormatter
 import com.ivy.design.api.LocalTimeProvider
+import com.ivy.design.l0_system.UI
 import com.ivy.frp.forward
 import com.ivy.frp.then2
 import com.ivy.home.Constants.SWIPE_HORIZONTAL_THRESHOLD
@@ -52,6 +54,13 @@ import com.ivy.legacy.utils.verticalSwipeListener
 import com.ivy.navigation.IvyPreview
 import com.ivy.navigation.screenScopedViewModel
 import com.ivy.ui.R
+import com.ivy.ui.haze.FrostedGlassDefaults
+import com.ivy.ui.haze.FrostedHeaderScaffold
+import com.ivy.ui.haze.HairlineEdge
+import com.ivy.ui.haze.frostedGlassStyle
+import com.ivy.ui.haze.frostedInspectionScrim
+import com.ivy.ui.haze.frostedPanel
+import com.ivy.ui.haze.rememberFrostedHairline
 import com.ivy.ui.rememberScrollPositionListState
 import com.ivy.wallet.domain.data.IvyCurrency
 import com.ivy.wallet.domain.pure.data.IncomeExpensePair
@@ -61,9 +70,11 @@ import com.ivy.wallet.ui.theme.modal.ChoosePeriodModal
 import com.ivy.wallet.ui.theme.modal.ChoosePeriodModalData
 import com.ivy.wallet.ui.theme.modal.CurrencyModal
 import com.ivy.wallet.ui.theme.modal.DeleteModal
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import java.math.BigDecimal
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import java.math.BigDecimal
 
 @ExperimentalAnimationApi
 @ExperimentalFoundationApi
@@ -100,10 +111,26 @@ fun BoxWithConstraintsScope.HomeUi(
 
     val baseCurrency = uiState.baseData.baseCurrency
 
-    Column(
+    val listState = rememberScrollPositionListState(
+        key = "home_lazy_column",
+        initialFirstVisibleItemIndex = ivyContext.transactionsListState
+            ?.firstVisibleItemIndex ?: 0,
+        initialFirstVisibleItemScrollOffset = ivyContext.transactionsListState
+            ?.firstVisibleItemScrollOffset ?: 0
+    )
+    val homeHazeState = remember { HazeState() }
+    val hazeStyle = frostedGlassStyle(background = UI.colors.pure, tint = UI.colors.pure)
+    val headerHairline = rememberFrostedHairline(
+        edge = HairlineEdge.Bottom,
+        color = UI.colors.medium.copy(alpha = FrostedGlassDefaults.HairlineAlpha),
+    )
+    val inspectionScrim = frostedInspectionScrim(UI.colors.pure)
+
+    // The header is a frosted panel over the list, which scrolls underneath it
+    FrostedHeaderScaffold(
         modifier = modifier
             .fillMaxSize()
-            .systemBarsPadding()
+            .navigationBarsPadding()
             .verticalSwipeListener(
                 sensitivity = Constants.SWIPE_DOWN_THRESHOLD_OPEN_MORE_MENU,
                 state = rememberSwipeListenerState(),
@@ -120,96 +147,94 @@ fun BoxWithConstraintsScope.HomeUi(
                 onSwipeRight = {
                     ivyContext.selectMainTab(MainTab.ACCOUNTS)
                 }
+            ),
+        header = {
+            HomeHeader(
+                modifier = Modifier
+                    .frostedPanel(state = homeHazeState, hairline = headerHairline, inspectionScrim = inspectionScrim)
+                    .statusBarsPadding(),
+                expanded = uiState.expanded,
+                name = uiState.name,
+                period = uiState.period,
+                currency = baseCurrency,
+                balance = uiState.balance.toDouble(),
+                hideBalance = uiState.hideBalance,
+
+                onShowMonthModal = {
+                    choosePeriodModal = ChoosePeriodModalData(
+                        period = uiState.period
+                    )
+                },
+                onBalanceClick = {
+                    onEvent(HomeEvent.BalanceClick)
+                },
+                onHiddenBalanceClick = {
+                    onEvent(HomeEvent.HiddenBalanceClick)
+                },
+                onSelectNextMonth = {
+                    onEvent(HomeEvent.SelectNextMonth)
+                },
+                onSelectPreviousMonth = {
+                    onEvent(HomeEvent.SelectPreviousMonth)
+                }
             )
-    ) {
-        val listState = rememberScrollPositionListState(
-            key = "home_lazy_column",
-            initialFirstVisibleItemIndex = ivyContext.transactionsListState
-                ?.firstVisibleItemIndex ?: 0,
-            initialFirstVisibleItemScrollOffset = ivyContext.transactionsListState
-                ?.firstVisibleItemScrollOffset ?: 0
-        )
+        },
+    ) { headerHeight ->
+            HomeLazyColumn(
+                modifier = Modifier.haze(state = homeHazeState, style = hazeStyle),
+                contentPadding = PaddingValues(top = headerHeight),
+                hideBalance = uiState.hideBalance,
+                hideIncome = uiState.hideIncome,
+                onSetExpand = {
+                    onEvent(HomeEvent.SetExpanded(it))
+                },
+                balance = uiState.balance,
+                onOpenMoreMenu = {
+                    setMoreMenuExpanded(true)
+                },
+                onBalanceClick = {
+                    onEvent(HomeEvent.BalanceClick)
+                },
+                onHiddenBalanceClick = {
+                    onEvent(HomeEvent.HiddenBalanceClick)
+                },
+                onHiddenIncomeClick = {
+                    onEvent(HomeEvent.HiddenIncomeClick)
+                },
 
-        HomeHeader(
-            expanded = uiState.expanded,
-            name = uiState.name,
-            period = uiState.period,
-            currency = baseCurrency,
-            balance = uiState.balance.toDouble(),
-            hideBalance = uiState.hideBalance,
+                period = uiState.period,
+                listState = listState,
 
-            onShowMonthModal = {
-                choosePeriodModal = ChoosePeriodModalData(
-                    period = uiState.period
-                )
-            },
-            onBalanceClick = {
-                onEvent(HomeEvent.BalanceClick)
-            },
-            onHiddenBalanceClick = {
-                onEvent(HomeEvent.HiddenBalanceClick)
-            },
-            onSelectNextMonth = {
-                onEvent(HomeEvent.SelectNextMonth)
-            },
-            onSelectPreviousMonth = {
-                onEvent(HomeEvent.SelectPreviousMonth)
-            }
-        )
+                baseData = uiState.baseData,
 
-        HomeLazyColumn(
-            hideBalance = uiState.hideBalance,
-            hideIncome = uiState.hideIncome,
-            onSetExpand = {
-                onEvent(HomeEvent.SetExpanded(it))
-            },
-            balance = uiState.balance,
-            onOpenMoreMenu = {
-                setMoreMenuExpanded(true)
-            },
-            onBalanceClick = {
-                onEvent(HomeEvent.BalanceClick)
-            },
-            onHiddenBalanceClick = {
-                onEvent(HomeEvent.HiddenBalanceClick)
-            },
-            onHiddenIncomeClick = {
-                onEvent(HomeEvent.HiddenIncomeClick)
-            },
+                upcoming = uiState.upcoming,
+                overdue = uiState.overdue,
 
-            period = uiState.period,
-            listState = listState,
+                stats = uiState.stats,
+                history = uiState.history,
 
-            baseData = uiState.baseData,
+                customerJourneyCards = uiState.customerJourneyCards,
+                shouldShowAccountSpecificColorInTransactions = uiState.shouldShowAccountSpecificColorInTransactions,
 
-            upcoming = uiState.upcoming,
-            overdue = uiState.overdue,
-
-            stats = uiState.stats,
-            history = uiState.history,
-
-            customerJourneyCards = uiState.customerJourneyCards,
-            shouldShowAccountSpecificColorInTransactions = uiState.shouldShowAccountSpecificColorInTransactions,
-
-            onPayOrGet = forward<Transaction>() then2 {
-                HomeEvent.PayOrGetPlanned(it)
-            } then2 onEvent,
-            onDismiss = forward<CustomerJourneyCardModel>() then2 {
-                HomeEvent.DismissCustomerJourneyCard(it)
-            } then2 onEvent,
-            onSkipTransaction = forward<Transaction>() then2 {
-                HomeEvent.SkipPlanned(it)
-            } then2 onEvent,
-            setUpcomingExpanded = forward<Boolean>() then2 {
-                HomeEvent.SetUpcomingExpanded(it)
-            } then2 onEvent,
-            setOverdueExpanded = forward<Boolean>() then2 {
-                HomeEvent.SetOverdueExpanded(it)
-            } then2 onEvent,
-            onSkipAllTransactions = {
-                skipAllModalVisible = true
-            }
-        )
+                onPayOrGet = forward<Transaction>() then2 {
+                    HomeEvent.PayOrGetPlanned(it)
+                } then2 onEvent,
+                onDismiss = forward<CustomerJourneyCardModel>() then2 {
+                    HomeEvent.DismissCustomerJourneyCard(it)
+                } then2 onEvent,
+                onSkipTransaction = forward<Transaction>() then2 {
+                    HomeEvent.SkipPlanned(it)
+                } then2 onEvent,
+                setUpcomingExpanded = forward<Boolean>() then2 {
+                    HomeEvent.SetUpcomingExpanded(it)
+                } then2 onEvent,
+                setOverdueExpanded = forward<Boolean>() then2 {
+                    HomeEvent.SetOverdueExpanded(it)
+                } then2 onEvent,
+                onSkipAllTransactions = {
+                    skipAllModalVisible = true
+                }
+            )
     }
 
     MoreMenu(
@@ -312,7 +337,8 @@ fun HomeLazyColumn(
     onHiddenIncomeClick: () -> Unit,
     onSkipTransaction: (Transaction) -> Unit,
     onSkipAllTransactions: (List<Transaction>) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     val ivyContext = ivyWalletCtx()
 
@@ -337,7 +363,8 @@ fun HomeLazyColumn(
             .fillMaxSize()
             .nestedScroll(nestedScrollConnection)
             .testTag("home_lazy_column"),
-        state = listState
+        state = listState,
+        contentPadding = contentPadding,
     ) {
         item {
             CashFlowInfo(

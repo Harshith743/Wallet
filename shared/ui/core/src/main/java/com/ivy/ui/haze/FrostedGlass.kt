@@ -3,11 +3,14 @@ package com.ivy.ui.haze
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeDefaults
@@ -73,6 +76,18 @@ fun Modifier.frostedPanel(
         )
     }
 }
+
+/** The hairline of a frosted panel in [color], [FrostedGlassDefaults.HairlineWidth] thick. */
+@Composable
+fun rememberFrostedHairline(edge: HairlineEdge, color: Color): FrostedHairline {
+    val widthPx = with(LocalDensity.current) { FrostedGlassDefaults.HairlineWidth.toPx() }
+    return remember(edge, color, widthPx) { FrostedHairline(edge = edge, color = color, widthPx = widthPx) }
+}
+
+/** The scrim to paint instead of the blur in previews and screenshot tests, else null. */
+@Composable
+fun frostedInspectionScrim(pure: Color): Color? =
+    if (LocalInspectionMode.current) pure.copy(alpha = FrostedGlassDefaults.InspectionScrimAlpha) else null
 
 private enum class Slot {
     Header,

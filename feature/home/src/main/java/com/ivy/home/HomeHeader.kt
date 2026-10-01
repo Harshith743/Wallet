@@ -38,7 +38,6 @@ import com.ivy.design.l0_system.style
 import com.ivy.design.utils.thenIf
 import com.ivy.legacy.data.model.TimePeriod
 import com.ivy.legacy.ivyWalletCtx
-import com.ivy.legacy.ui.component.transaction.TransactionsDividerLine
 import com.ivy.legacy.utils.clickableNoIndication
 import com.ivy.legacy.utils.drawColoredShadow
 import com.ivy.legacy.utils.format
@@ -77,8 +76,9 @@ internal fun HomeHeader(
     hideBalance: Boolean,
     onHiddenBalanceClick: () -> Unit,
     onSelectPreviousMonth: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column {
+    Column(modifier = modifier) {
         val percentExpanded by animateFloatAsState(
             targetValue = if (expanded) 1f else 0f,
             animationSpec = springBounce(
@@ -104,14 +104,7 @@ internal fun HomeHeader(
             onSelectPreviousMonth = onSelectPreviousMonth,
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        if (percentExpanded < 0.5f) {
-            TransactionsDividerLine(
-                modifier = Modifier.alpha(1f - percentExpanded),
-                paddingHorizontal = 0.dp
-            )
-        }
+        Spacer(Modifier.height(12.dp))
     }
 }
 
