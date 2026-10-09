@@ -55,7 +55,6 @@ class CreditCardsViewModel @Inject constructor(
     private var baseCurrency by mutableStateOf("")
     private var cards by mutableStateOf<ImmutableList<CreditCardUi>>(persistentListOf())
     private var activeCardId by mutableStateOf<AccountId?>(null)
-    private var expanded by mutableStateOf(false)
     private var revealedCardId by mutableStateOf<AccountId?>(null)
     private var totalDueText by mutableStateOf("")
     private var dueCardsCount by mutableIntStateOf(0)
@@ -86,7 +85,6 @@ class CreditCardsViewModel @Inject constructor(
         return CreditCardsUiState(
             cards = cards,
             activeCardId = activeCardId,
-            expanded = expanded,
             revealedCardId = revealedCardId,
             totalDueText = totalDueText,
             dueCardsCount = dueCardsCount,
@@ -102,8 +100,6 @@ class CreditCardsViewModel @Inject constructor(
         viewModelScope.launch(dispatchers.default) {
             when (event) {
                 is CreditCardsUiEvent.SelectCard -> selectCard(event.id)
-                CreditCardsUiEvent.ExpandStack -> changeExpanded(true)
-                CreditCardsUiEvent.CollapseStack -> changeExpanded(false)
                 is CreditCardsUiEvent.Reveal -> revealedCardId = event.id
                 is CreditCardsUiEvent.CloseReveal -> closeReveal(event.id)
                 is CreditCardsUiEvent.PayNowClick -> openPaySheet(event.id, launchUpi = true)
@@ -162,14 +158,8 @@ class CreditCardsViewModel @Inject constructor(
         session.activeCreditCardId = id
         Snapshot.withMutableSnapshot {
             activeCardId = id
-            expanded = false
             revealedCardId = null
         }
-    }
-
-    private fun changeExpanded(value: Boolean) {
-        expanded = value
-        revealedCardId = null
     }
 
     private fun closeReveal(id: AccountId?) {

@@ -1,9 +1,15 @@
 package com.ivy.accounts
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,25 +29,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ivy.base.legacy.Theme
@@ -54,6 +58,9 @@ import com.ivy.creditcards.CreditCardsViewModel
 import com.ivy.creditcards.closeRevealOnTapOutside
 import com.ivy.creditcards.preview.CreditCardsPreviewData
 import com.ivy.creditcards.session.AccountsSegment
+import com.ivy.creditcards.ui.CardStackLayout
+import com.ivy.creditcards.ui.CardStackUnfold
+import com.ivy.creditcards.ui.CreditCardFaceDefaults
 import com.ivy.creditcards.ui.text
 import com.ivy.data.model.Account
 import com.ivy.data.model.AccountId
@@ -73,6 +80,7 @@ import com.ivy.legacy.utils.rememberSwipeListenerState
 import com.ivy.navigation.CreditCardDetailsScreen
 import com.ivy.navigation.CreditCardPaymentsScreen
 import com.ivy.navigation.EditCreditCardScreen
+import com.ivy.navigation.Navigation
 import com.ivy.navigation.SettingsScreen
 import com.ivy.navigation.TransactionsScreen
 import com.ivy.navigation.navigation
@@ -138,15 +146,17 @@ private fun BoxWithConstraintsScope.UI(
     )
     val cardsListState = rememberLazyListState()
     val listState = if (segment == AccountsSegment.ACCOUNTS) accountsListState else cardsListState
-    val stackScrollConnection = rememberStackScrollConnection(
+    val unfold = rememberUnfoldState(
         listState = cardsListState,
-        expanded = creditCardsState.expanded,
-        onEvent = onCreditCardsEvent,
+        cardCount = creditCardsState.cards.size,
+        contentWidth = maxWidth - ListHorizontalPadding * 2,
+        viewportHeight = maxHeight,
     )
-    // Folding the list back (pull down, or selecting a listed card) returns to the top
-    LaunchedEffect(creditCardsState.expanded) {
-        if (!creditCardsState.expanded && cardsListState.canScrollBackward) cardsListState.animateScrollToItem(0)
+    // Selecting a listed card returns the page to the top, which folds the list back
+    LaunchedEffect(creditCardsState.activeCardId) {
+        if (cardsListState.canScrollBackward) cardsListState.animateScrollToItem(0)
     }
+    CloseRevealOnUnfold(progress = unfold.progress, onCreditCardsEvent = onCreditCardsEvent)
     val swipeListenerState = rememberSwipeListenerState()
     val accountsHazeState = remember { HazeState() }
     val hazeStyle = frostedGlassStyle(background = UI.colors.pure, tint = UI.colors.pure)
@@ -184,17 +194,21 @@ private fun BoxWithConstraintsScope.UI(
                 }
                 .closeRevealOnTapOutside(enabled = creditCardsState.revealedCardId != null) {
                     onCreditCardsEvent(CreditCardsUiEvent.CloseReveal(null))
-                }
-                .thenIf(segment == AccountsSegment.CREDIT_CARDS) { nestedScroll(stackScrollConnection) },
+                },
             state = listState,
             contentPadding = PaddingValues(top = headerHeight),
+            flingBehavior = unfold.flingFor(segment),
         ) {
-            item {
-                HeaderSummary(
-                    state = state,
-                    creditCardsState = creditCardsState,
-                    onDrawerToggle = { onEvent(AccountsEvent.OnDrawerToggle) },
-                )
+            // The summary and the cards share one item so the unfold progress is simply the
+            // first item's scroll offset
+            if (segment == AccountsSegment.ACCOUNTS) {
+                item {
+                    HeaderSummary(
+                        state = state,
+                        creditCardsState = creditCardsState,
+                        onDrawerToggle = { onEvent(AccountsEvent.OnDrawerToggle) },
+                    )
+                }
             }
             when (segment) {
                 AccountsSegment.ACCOUNTS -> items(state.accountsData) {
@@ -222,27 +236,25 @@ private fun BoxWithConstraintsScope.UI(
                 }
 
                 AccountsSegment.CREDIT_CARDS -> item {
-                    CreditCardsContent(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        state = creditCardsState,
-                        onEvent = onCreditCardsEvent,
-                        navigation = CreditCardsNavigation(
-                            onAddCard = { nav.navigateTo(EditCreditCardScreen(cardId = null)) },
-                            onViewDetails = { nav.navigateTo(CreditCardDetailsScreen(cardId = it.value)) },
-                            onEditCard = { nav.navigateTo(EditCreditCardScreen(cardId = it.value)) },
-                            onRecentSpends = {
-                                nav.navigateTo(TransactionsScreen(accountId = it.value, categoryId = null))
-                            },
-                            onPaymentHistory = { nav.navigateTo(CreditCardPaymentsScreen(cardId = it.value)) },
-                        ),
-                    )
+                    Column {
+                        HeaderSummary(
+                            state = state,
+                            creditCardsState = creditCardsState,
+                            onDrawerToggle = { onEvent(AccountsEvent.OnDrawerToggle) },
+                        )
+                        CreditCardsContent(
+                            modifier = Modifier.padding(horizontal = ListHorizontalPadding),
+                            state = creditCardsState,
+                            onEvent = onCreditCardsEvent,
+                            navigation = cardsNavigation(nav),
+                            unfoldProgress = unfold.progress,
+                        )
+                    }
                 }
             }
 
-            item {
-                // scroll hack
-                Spacer(Modifier.height(150.dp))
-            }
+            // Room to scroll below the list (the cards segment needs the unfold distance)
+            item { Spacer(Modifier.height(unfold.trailingSpaceFor(segment))) }
         }
     }
 
@@ -770,57 +782,103 @@ private fun ToolbarOverlay(
     )
 }
 
-private val ExpandDragThreshold = 24.dp
-private val CollapseDragThreshold = 32.dp
+private val ListHorizontalPadding = 16.dp
+
+/** Where the cards segment's actions go. */
+private fun cardsNavigation(nav: Navigation): CreditCardsNavigation = CreditCardsNavigation(
+    onAddCard = { nav.navigateTo(EditCreditCardScreen(cardId = null)) },
+    onViewDetails = { nav.navigateTo(CreditCardDetailsScreen(cardId = it.value)) },
+    onEditCard = { nav.navigateTo(EditCreditCardScreen(cardId = it.value)) },
+    onRecentSpends = { nav.navigateTo(TransactionsScreen(accountId = it.value, categoryId = null)) },
+    onPaymentHistory = { nav.navigateTo(CreditCardPaymentsScreen(cardId = it.value)) },
+)
+
+/** A reveal closes as soon as the stack starts to unfold. */
+@Composable
+private fun CloseRevealOnUnfold(
+    progress: State<Float>,
+    onCreditCardsEvent: (CreditCardsUiEvent) -> Unit,
+) {
+    val currentOnCreditCardsEvent by rememberUpdatedState(onCreditCardsEvent)
+    val unfolding by remember(progress) { derivedStateOf { progress.value > 0f } }
+    LaunchedEffect(unfolding) {
+        if (unfolding) currentOnCreditCardsEvent(CreditCardsUiEvent.CloseReveal(null))
+    }
+}
+
+/** What the cards segment needs for the scroll-driven unfold; see [CardStackUnfold]. */
+private class UnfoldState(
+    val progress: State<Float>,
+    private val fling: FlingBehavior,
+    private val trailingSpace: Dp,
+) {
+    /** The accounts segment keeps the default fling and the minimum trailing space. */
+    @Composable
+    fun flingFor(segment: AccountsSegment): FlingBehavior =
+        if (segment == AccountsSegment.CREDIT_CARDS) fling else ScrollableDefaults.flingBehavior()
+
+    fun trailingSpaceFor(segment: AccountsSegment): Dp =
+        if (segment == AccountsSegment.CREDIT_CARDS) trailingSpace else CardStackUnfold.MinimumTrailingSpace
+}
+
+@Composable
+private fun rememberUnfoldState(
+    listState: LazyListState,
+    cardCount: Int,
+    contentWidth: Dp,
+    viewportHeight: Dp,
+): UnfoldState {
+    val density = LocalDensity.current
+    val distancePx = with(density) { CardStackUnfold.Distance.toPx() }
+    val settleVelocityPx = with(density) { CardStackUnfold.SettleVelocity.toPx() }
+    val progress = remember(listState, distancePx) {
+        derivedStateOf {
+            CardStackUnfold.progress(
+                firstVisibleItemIndex = listState.firstVisibleItemIndex,
+                firstVisibleItemScrollOffset = listState.firstVisibleItemScrollOffset,
+                distancePx = distancePx,
+            )
+        }
+    }
+    val fling = rememberUnfoldFling(progress = progress, distancePx = distancePx, settleVelocityPx = settleVelocityPx)
+    val cardHeight = contentWidth / CreditCardFaceDefaults.AspectRatio
+    val trailingSpace = CardStackUnfold.trailingSpace(
+        viewport = viewportHeight,
+        collapsedStackHeight = CardStackLayout.height(count = cardCount, expanded = false, cardHeight = cardHeight),
+        cardCount = cardCount,
+    )
+    return remember(progress, fling, trailingSpace) { UnfoldState(progress, fling, trailingSpace) }
+}
+
+private val SettleMotion = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow,
+)
 
 /**
- * Turns page drags on the cards segment into stack state: dragging up anywhere unfolds the
- * stack into the list; pulling down while the list is at the top folds it back. Deltas are
- * only observed, never consumed, so the list scrolls as usual. Events are applied by the
- * ViewModel asynchronously, so a per-gesture latch stops the threshold from re-firing.
+ * The cards list's fling: when the finger lifts mid-unfold the page glides to the end
+ * [CardStackUnfold.settleTarget] picks (which settles the cards); otherwise the usual fling.
  */
 @Composable
-private fun rememberStackScrollConnection(
-    listState: LazyListState,
-    expanded: Boolean,
-    onEvent: (CreditCardsUiEvent) -> Unit,
-): NestedScrollConnection {
-    val currentExpanded by rememberUpdatedState(expanded)
-    val currentOnEvent by rememberUpdatedState(onEvent)
-    val density = LocalDensity.current
-    val expandPx = with(density) { ExpandDragThreshold.toPx() }
-    val collapsePx = with(density) { CollapseDragThreshold.toPx() }
-    return remember(listState, expandPx, collapsePx) {
-        object : NestedScrollConnection {
-            private var dragged = 0f
-            private var fired = false
-
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source != NestedScrollSource.Drag) return Offset.Zero
-                val dy = available.y
-                if (dy != 0f && (dragged > 0f) != (dy > 0f)) reset()
-                dragged += dy
-                if (!fired) fireIfPastThreshold()
-                return Offset.Zero
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                reset()
-                return Velocity.Zero
-            }
-
-            private fun fireIfPastThreshold() {
-                val expand = !currentExpanded && dragged <= -expandPx
-                val collapse = currentExpanded && dragged >= collapsePx && !listState.canScrollBackward
-                if (expand || collapse) {
-                    fired = true
-                    currentOnEvent(if (expand) CreditCardsUiEvent.ExpandStack else CreditCardsUiEvent.CollapseStack)
-                }
-            }
-
-            private fun reset() {
-                dragged = 0f
-                fired = false
+private fun rememberUnfoldFling(
+    progress: State<Float>,
+    distancePx: Float,
+    settleVelocityPx: Float,
+): FlingBehavior {
+    val default = ScrollableDefaults.flingBehavior()
+    return remember(default, progress, distancePx, settleVelocityPx) {
+        object : FlingBehavior {
+            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+                val current = progress.value
+                if (current <= 0f || current >= 1f) return with(default) { performFling(initialVelocity) }
+                val target = CardStackUnfold.settleTarget(current, initialVelocity, settleVelocityPx)
+                var scrolled = 0f
+                animate(
+                    initialValue = 0f,
+                    targetValue = (target - current) * distancePx,
+                    animationSpec = SettleMotion,
+                ) { value, _ -> scrolled += scrollBy(value - scrolled) }
+                return 0f
             }
         }
     }

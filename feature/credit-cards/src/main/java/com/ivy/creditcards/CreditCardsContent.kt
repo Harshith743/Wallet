@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -46,6 +47,7 @@ fun CreditCardsContent(
     state: CreditCardsUiState,
     onEvent: (CreditCardsUiEvent) -> Unit,
     navigation: CreditCardsNavigation,
+    unfoldProgress: State<Float>,
     modifier: Modifier = Modifier,
 ) {
     when {
@@ -54,7 +56,7 @@ fun CreditCardsContent(
         else -> CardStack(
             cards = state.cards,
             activeCardId = state.activeCardId,
-            expanded = state.expanded,
+            unfoldProgress = unfoldProgress,
             revealedCardId = state.revealedCardId,
             callbacks = CardStackCallbacks(
                 onSelectCard = { onEvent(CreditCardsUiEvent.SelectCard(it)) },

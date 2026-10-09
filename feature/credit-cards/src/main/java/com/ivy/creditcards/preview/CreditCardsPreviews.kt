@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -45,11 +47,11 @@ fun CreditCardsContentUiTest(
             CreditCardsContent(
                 state = CreditCardsPreviewData.cardsState(
                     cards = cards,
-                    expanded = expanded,
                     revealedCardId = if (revealed) cards.firstOrNull()?.id else null,
                 ),
                 onEvent = {},
                 navigation = noNavigation,
+                unfoldProgress = remember { mutableFloatStateOf(if (expanded) 1f else 0f) },
             )
         }
     }

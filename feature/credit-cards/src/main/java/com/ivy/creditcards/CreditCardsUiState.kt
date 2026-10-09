@@ -13,7 +13,6 @@ import kotlinx.collections.immutable.ImmutableList
 data class CreditCardsUiState(
     val cards: ImmutableList<CreditCardUi>,
     val activeCardId: AccountId?,
-    val expanded: Boolean,
     /** The card whose quick-action grid is revealed (at most one). */
     val revealedCardId: AccountId?,
     val totalDueText: String,
@@ -42,12 +41,6 @@ data class PaySheetUi(
 
 sealed interface CreditCardsUiEvent {
     data class SelectCard(val id: AccountId) : CreditCardsUiEvent
-
-    /** Page dragged up: the stack unfolds into the list. */
-    data object ExpandStack : CreditCardsUiEvent
-
-    /** List pulled down at the top: the list folds back into the stack. */
-    data object CollapseStack : CreditCardsUiEvent
 
     data class Reveal(val id: AccountId) : CreditCardsUiEvent
 
